@@ -2,11 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from football_intelligence.analytics.scouting import (
-    SCOUTING_PROFILES,
-    scouting_pool,
-    similar_players,
-)
+from football_intelligence.analytics.scouting import scouting_pool, similar_players
 from football_intelligence.config import Settings, get_settings
 from football_intelligence.db import get_db
 from football_intelligence.models import (
@@ -217,14 +213,8 @@ def player_matches(
     ]
 
 
-@router.get("/scouting/profiles")
-def scouting_profiles() -> dict[str, tuple[str, ...]]:
-    return SCOUTING_PROFILES
-
-
 @router.get("/scouting/players")
 def scouting_players(
-    profile: str = Query("balanced"),
     min_minutes: float = Query(450, ge=0),
     position: str | None = None,
     search: str | None = None,
@@ -232,13 +222,10 @@ def scouting_players(
     db: Session = Depends(get_db),
     settings: Settings = Depends(get_settings),
 ) -> list[dict]:
-    if profile not in SCOUTING_PROFILES:
-        raise HTTPException(400, f"Unknown profile: {profile}")
     return scouting_pool(
         db,
         settings.statsbomb_competition_id,
         settings.statsbomb_season_id,
-        profile=profile,
         min_minutes=min_minutes,
         position=position,
         search=search,

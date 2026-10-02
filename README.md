@@ -18,7 +18,7 @@ V1 delivers:
 - derived team-match, player-match, team-season, and player-season statistics;
 - a FastAPI foundation for competition, match, team, and player analytics;
 - a responsive analyst dashboard with overview, match, team, player, and scouting views;
-- league percentiles, configurable recruitment profiles, and similar-player search;
+- season totals, normalized per-90 output, positional filtering, and similar-player search;
 - source-to-mart validation with a strict full-season readiness check;
 - dbt-style SQL models and data-quality tests for teams that prefer dbt.
 
@@ -131,12 +131,12 @@ available in the generated OpenAPI documentation at `/docs`.
 - **Match Analysis:** searchable fixtures, team comparison, xG, shot map, and player output.
 - **Team Analysis:** season production, xG, and possession profiles.
 - **Player Analysis:** totals, per-90 statistics, workload, and match logs.
-- **Scouting:** minimum-minute qualification, positional filtering, role-based percentile
-  scores, and standardized same-position similarity.
+- **Scouting:** minimum-minute qualification, positional filtering, season totals,
+  normalized per-90 output, and standardized same-position similarity.
 
-Scouting scores are screening aids, not objective player valuations. They average the league
-percentiles of the metrics in the selected profile and should be paired with video, role,
-age, contract, physical, and contextual analysis before recruitment decisions.
+The scouting workspace is a screening tool, not an objective player valuation. Its
+statistical output should be paired with video, role, age, contract, physical, and
+contextual analysis before recruitment decisions.
 
 ## Data model and metrics
 

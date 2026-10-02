@@ -1,35 +1,25 @@
 (function () {
-  const profiles = {
-    attacking: ['goals', 'xg', 'shots', 'carries'],
-    possession: ['passes', 'completed_passes', 'carries'],
-    defending: ['pressures', 'tackles', 'interceptions'],
-    balanced: ['goals', 'xg', 'shots', 'passes', 'carries', 'pressures', 'tackles', 'interceptions'],
-  };
-  const metrics = profiles.balanced;
+  const metrics = ['goals', 'xg', 'shots', 'passes', 'carries', 'pressures', 'tackles', 'interceptions'];
   const clone = value => JSON.parse(JSON.stringify(value));
 
-  function rankedPool(data, params) {
+  function filteredPool(data, params) {
     const minMinutes = Number(params.get('min_minutes') || 0);
     const position = (params.get('position') || '').toLowerCase();
     const search = (params.get('search') || '').toLowerCase();
-    const profile = profiles[params.get('profile')] || profiles.balanced;
     const limit = Number(params.get('limit') || 50);
     const pool = data.scoutingBase.filter(player =>
       player.minutes >= minMinutes &&
       (!position || player.position.toLowerCase().includes(position)) &&
       (!search || `${player.player_name} ${player.team_name}`.toLowerCase().includes(search))
     ).map(clone);
-    if (!pool.length) return [];
-    const distributions = Object.fromEntries(metrics.map(metric => [metric, pool.map(p => p.per_90[metric]).sort((a,b) => a-b)]));
     for (const player of pool) {
-      player.percentiles = {};
       for (const metric of metrics) {
-        const values = distributions[metric];
-        player.percentiles[metric] = Math.round(100 * values.filter(value => value <= player.per_90[metric]).length / values.length);
+        player.totals[metric] ??= metric === 'xg'
+          ? Number((player.per_90[metric] * player.minutes / 90).toFixed(2))
+          : Math.round(player.per_90[metric] * player.minutes / 90);
       }
-      player.scouting_score = Number((profile.reduce((sum, metric) => sum + player.percentiles[metric], 0) / profile.length).toFixed(1));
     }
-    return pool.sort((a,b) => b.scouting_score - a.scouting_score || b.minutes - a.minutes).slice(0, limit);
+    return pool.sort((a,b) => b.minutes - a.minutes).slice(0, limit);
   }
 
   function similarPlayers(data, playerId, params) {
@@ -70,7 +60,7 @@
       const limit = Number(url.searchParams.get('limit') || 100);
       return clone(data.players).filter(p => p.minutes >= minimum && (!team || p.team_id === Number(team))).slice(0, limit);
     }
-    if (pathname === '/api/v1/scouting/players') return rankedPool(data, url.searchParams);
+    if (pathname === '/api/v1/scouting/players') return filteredPool(data, url.searchParams);
     let match = pathname.match(/^\/api\/v1\/matches\/(\d+)\/events$/);
     if (match) return clone(data.matchShots[match[1]] || []);
     match = pathname.match(/^\/api\/v1\/matches\/(\d+)\/players$/);

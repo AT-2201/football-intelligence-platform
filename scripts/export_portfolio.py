@@ -63,7 +63,7 @@ def main() -> None:
             "playerLogs": player_logs,
             "scoutingBase": get(
                 client,
-                "/api/v1/scouting/players?profile=balanced&min_minutes=0&limit=1000",
+                "/api/v1/scouting/players?min_minutes=0&limit=1000",
             ),
         }
     payload = json.dumps(snapshot, ensure_ascii=False, separators=(",", ":"))

@@ -6,7 +6,7 @@
   <meta name="description" content="Premier League match, player, team and scouting intelligence.">
   <title>Touchline Intelligence</title>
   <link rel="icon" href="./assets/favicon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="./assets/styles.css?v=2">
+  <link rel="stylesheet" href="./assets/styles.css?v=3">
 </head>
 <body>
   <div class="app-shell">
@@ -82,20 +82,18 @@
       </section>
 
       <section class="page" id="page-scouting">
-        <div class="intro-row"><div><p class="section-kicker">RECRUITMENT</p><h2>Scouting workspace</h2></div><p class="lede">Rank qualified players against the league and find stylistic alternatives.</p></div>
+        <div class="intro-row"><div><p class="section-kicker">RECRUITMENT</p><h2>Scouting workspace</h2></div><p class="lede">Filter qualified players, review their season output and find stylistic alternatives.</p></div>
         <div class="toolbar filters scouting-controls">
-          <label>Profile<select id="scout-profile"><option value="balanced">Balanced</option><option value="attacking">Attacking</option><option value="possession">Possession</option><option value="defending">Defending</option></select></label>
           <label>Minimum minutes<input id="scout-minutes" type="number" min="0" step="90" value="450"></label>
           <label>Position<input id="scout-position" type="search" placeholder="e.g. Centre Back"></label>
           <button class="primary-button" id="run-scout">Run search</button>
         </div>
-        <div class="scouting-note"><strong>Composite score</strong><span>Average league percentile for the selected profile. Use it as a screening signal, not a final verdict.</span></div>
-        <div class="master-detail"><div class="data-list" id="scout-list"></div><aside class="detail-panel" id="scout-detail"><div class="empty-state"><span class="empty-glyph">◇</span><h3>Select a candidate</h3><p>Inspect percentile strengths and similar players.</p></div></aside></div>
+        <div class="master-detail"><div class="data-list" id="scout-list"></div><aside class="detail-panel" id="scout-detail"><div class="empty-state"><span class="empty-glyph">◇</span><h3>Select a candidate</h3><p>Inspect season totals, per-90 output and similar players.</p></div></aside></div>
       </section>
     </main>
   </div>
   <script src="./assets/data.js"></script>
-  <script src="./assets/data-adapter.js"></script>
-  <script src="./assets/app.js" defer></script>
+  <script src="./assets/data-adapter.js?v=2"></script>
+  <script src="./assets/app.js?v=2" defer></script>
 </body>
 </html>
