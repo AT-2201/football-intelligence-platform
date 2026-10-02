@@ -1,0 +1,20 @@
+version: 2
+
+sources:
+  - name: app
+    schema: public
+    tables:
+      - name: matches
+        columns:
+          - name: match_id
+            tests: [unique, not_null]
+      - name: events
+        columns:
+          - name: event_id
+            tests: [unique, not_null]
+          - name: match_id
+            tests: [not_null]
+      - name: lineups
+      - name: teams
+      - name: players
+

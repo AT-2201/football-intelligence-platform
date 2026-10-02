@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Premier League match, player, team and scouting intelligence.">
+  <title>Touchline Intelligence</title>
+  <link rel="icon" href="./assets/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="./assets/styles.css">
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <a class="brand" href="#overview" aria-label="Touchline Intelligence home">
+        <span class="brand-mark">TI</span>
+        <span><strong>Touchline</strong><small>INTELLIGENCE</small></span>
+      </a>
+      <nav class="primary-nav" aria-label="Primary navigation">
+        <button class="nav-item active" data-page="overview"><span>01</span>Overview</button>
+        <button class="nav-item" data-page="matches"><span>02</span>Matches</button>
+        <button class="nav-item" data-page="teams"><span>03</span>Teams</button>
+        <button class="nav-item" data-page="players"><span>04</span>Players</button>
+        <button class="nav-item" data-page="scouting"><span>05</span>Scouting</button>
+      </nav>
+      <div class="source-card">
+        <span class="source-label">DATA SOURCE</span>
+        <img class="source-logo" src="https://raw.githubusercontent.com/hudl/open-data/master/img/SB%20-%20Icon%20Lockup%20-%20Colour%20positive.png" alt="StatsBomb">
+        <strong>StatsBomb Open Data</strong>
+        <small>Premier League · 2015/16</small>
+      </div>
+    </aside>
+
+    <main class="workspace">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">FOOTBALL OPERATIONS / <span id="section-label">OVERVIEW</span></p>
+          <h1 id="page-title">League intelligence</h1>
+        </div>
+        <div class="coverage-chip" id="coverage-chip" title="Loaded match coverage">
+          <span class="pulse"></span><strong>Checking data</strong>
+        </div>
+      </header>
+
+      <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+      <section class="page active" id="page-overview" aria-labelledby="page-title">
+        <div class="intro-row">
+          <div>
+            <p class="section-kicker">COMPETITION CONTROL</p>
+            <h2 id="competition-heading">Premier League 2015/16</h2>
+          </div>
+          <p class="lede">A league-wide view of results, performance and recruitment signals.</p>
+        </div>
+        <div class="metric-grid" id="overview-metrics"></div>
+        <div class="split-grid">
+          <article class="panel table-panel">
+            <div class="panel-heading"><div><p class="section-kicker">TABLE</p><h3>League standings</h3></div><span class="muted">Loaded fixtures</span></div>
+            <div class="table-wrap"><table><thead><tr><th>#</th><th>Club</th><th>P</th><th>W</th><th>D</th><th>L</th><th>GD</th><th>PTS</th></tr></thead><tbody id="standings-body"></tbody></table></div>
+          </article>
+          <article class="panel">
+            <div class="panel-heading"><div><p class="section-kicker">FORM</p><h3>Top scorers</h3></div><span class="muted">Season</span></div>
+            <div class="leader-list" id="top-scorers"></div>
+          </article>
+        </div>
+      </section>
+
+      <section class="page" id="page-matches">
+        <div class="intro-row"><div><p class="section-kicker">MATCH CENTRE</p><h2>Results and performance</h2></div><p class="lede">Open a fixture for xG, shot locations and individual output.</p></div>
+        <div class="toolbar"><label class="search"><span>⌕</span><input id="match-search" type="search" placeholder="Search by club" aria-label="Search matches"></label><span class="result-count" id="match-count"></span></div>
+        <div class="master-detail"><div class="match-list" id="match-list"></div><aside class="detail-panel" id="match-detail"><div class="empty-state"><span class="empty-glyph">⌾</span><h3>Select a match</h3><p>Choose a fixture to inspect its performance profile.</p></div></aside></div>
+      </section>
+
+      <section class="page" id="page-teams">
+        <div class="intro-row"><div><p class="section-kicker">TEAM ANALYSIS</p><h2>Club performance profiles</h2></div><p class="lede">Compare output, control and chance creation across the league.</p></div>
+        <div class="card-grid" id="team-grid"></div>
+      </section>
+
+      <section class="page" id="page-players">
+        <div class="intro-row"><div><p class="section-kicker">PLAYER ANALYSIS</p><h2>Season performance</h2></div><p class="lede">Production and workload with normalized per-90 output.</p></div>
+        <div class="toolbar filters"><label class="search"><span>⌕</span><input id="player-search" type="search" placeholder="Search players" aria-label="Search players"></label><label>Minimum minutes<input id="player-minutes" type="number" min="0" step="90" value="0"></label></div>
+        <div class="master-detail"><div class="data-list" id="player-list"></div><aside class="detail-panel" id="player-detail"><div class="empty-state"><span class="empty-glyph">◎</span><h3>Select a player</h3><p>Open a player to inspect totals and per-90 output.</p></div></aside></div>
+      </section>
+
+      <section class="page" id="page-scouting">
+        <div class="intro-row"><div><p class="section-kicker">RECRUITMENT</p><h2>Scouting workspace</h2></div><p class="lede">Rank qualified players against the league and find stylistic alternatives.</p></div>
+        <div class="toolbar filters scouting-controls">
+          <label>Profile<select id="scout-profile"><option value="balanced">Balanced</option><option value="attacking">Attacking</option><option value="possession">Possession</option><option value="defending">Defending</option></select></label>
+          <label>Minimum minutes<input id="scout-minutes" type="number" min="0" step="90" value="450"></label>
+          <label>Position<input id="scout-position" type="search" placeholder="e.g. Centre Back"></label>
+          <button class="primary-button" id="run-scout">Run search</button>
+        </div>
+        <div class="scouting-note"><strong>Composite score</strong><span>Average league percentile for the selected profile. Use it as a screening signal, not a final verdict.</span></div>
+        <div class="master-detail"><div class="data-list" id="scout-list"></div><aside class="detail-panel" id="scout-detail"><div class="empty-state"><span class="empty-glyph">◇</span><h3>Select a candidate</h3><p>Inspect percentile strengths and similar players.</p></div></aside></div>
+      </section>
+    </main>
+  </div>
+  <script src="./assets/data.js"></script>
+  <script src="./assets/data-adapter.js"></script>
+  <script src="./assets/app.js" defer></script>
+</body>
+</html>

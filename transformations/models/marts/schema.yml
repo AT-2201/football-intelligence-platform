@@ -1,0 +1,11 @@
+version: 2
+
+models:
+  - name: team_match_stats
+    description: Event-derived team totals for each match.
+    columns:
+      - name: match_id
+        tests: [not_null]
+      - name: team_id
+        tests: [not_null]
+

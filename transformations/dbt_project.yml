@@ -1,0 +1,13 @@
+name: football_intelligence
+version: "1.0.0"
+config-version: 2
+profile: football_intelligence
+model-paths: ["models"]
+clean-targets: ["target", "dbt_packages"]
+models:
+  football_intelligence:
+    staging:
+      +materialized: view
+    marts:
+      +materialized: table
+

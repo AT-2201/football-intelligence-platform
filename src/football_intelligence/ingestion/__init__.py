@@ -1,0 +1,2 @@
+"""StatsBomb ingestion layer."""
+
