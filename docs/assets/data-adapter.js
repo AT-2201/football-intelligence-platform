@@ -45,6 +45,37 @@
     return { target: clone(target), similar_players: candidates.slice(0, limit) };
   }
 
+  function comparePlayers(data, playerIds) {
+    const uniqueIds = [...new Set(playerIds)];
+    const pool = data.scoutingBase.map(clone);
+    const benchmark = pool.filter(player => player.minutes >= 450);
+    const distributions = Object.fromEntries(metrics.map(metric => [metric, benchmark.map(player => player.per_90[metric]).sort((a,b) => a-b)]));
+    const means = Object.fromEntries(metrics.map(metric => [metric, benchmark.reduce((sum,player) => sum + player.per_90[metric], 0) / benchmark.length]));
+    const deviations = Object.fromEntries(metrics.map(metric => {
+      const variance = benchmark.reduce((sum,player) => sum + Math.pow(player.per_90[metric] - means[metric], 2), 0) / benchmark.length;
+      return [metric, Math.sqrt(variance) || 1];
+    }));
+    const players = uniqueIds.map(id => pool.find(player => player.player_id === id)).filter(Boolean).map(player => {
+      player.relative_profile = Object.fromEntries(metrics.map(metric => [metric, Math.round(100 * distributions[metric].filter(value => value <= player.per_90[metric]).length / distributions[metric].length)]));
+      const ranked = [...metrics].sort((a,b) => player.relative_profile[b] - player.relative_profile[a]);
+      player.strengths = ranked.slice(0,3);
+      player.development_areas = ranked.slice(-2);
+      return player;
+    });
+    const similarities = [];
+    for (let i=0; i<players.length; i++) {
+      for (let j=i+1; j<players.length; j++) {
+        const distance = Math.sqrt(metrics.reduce((sum,metric) => {
+          const difference = (players[i].per_90[metric] - players[j].per_90[metric]) / deviations[metric];
+          return sum + difference * difference;
+        }, 0));
+        similarities.push({player_a_id:players[i].player_id, player_b_id:players[j].player_id, similarity:Number((100/(1+distance)).toFixed(1))});
+      }
+    }
+    similarities.sort((a,b) => b.similarity - a.similarity);
+    return {players, similarities, benchmark:{minimum_minutes:450, players:benchmark.length, method:'League-relative per-90 profile'}};
+  }
+
   window.portfolioApi = async function (path) {
     const data = window.PORTFOLIO_DATA;
     if (!data) return undefined;
@@ -61,6 +92,7 @@
       return clone(data.players).filter(p => p.minutes >= minimum && (!team || p.team_id === Number(team))).slice(0, limit);
     }
     if (pathname === '/api/v1/scouting/players') return filteredPool(data, url.searchParams);
+    if (pathname === '/api/v1/scouting/compare') return comparePlayers(data, url.searchParams.getAll('player_ids').map(Number));
     let match = pathname.match(/^\/api\/v1\/matches\/(\d+)\/events$/);
     if (match) return clone(data.matchShots[match[1]] || []);
     match = pathname.match(/^\/api\/v1\/matches\/(\d+)\/players$/);

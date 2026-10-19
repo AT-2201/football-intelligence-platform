@@ -1,5 +1,11 @@
-const state = { overview: null, matches: [], teams: [], players: [], scouts: [] };
-const titles = { overview: 'League intelligence', matches: 'Match analysis', teams: 'Team analysis', players: 'Player analysis', scouting: 'Scouting workspace' };
+const state = { overview: null, matches: [], teams: [], players: [], scouts: [], comparePool: [], comparisonIds: [], comparison: null };
+const titles = { overview: 'League intelligence', matches: 'Match analysis', teams: 'Team analysis', players: 'Player analysis', scouting: 'Scouting workspace', compare: 'Player comparison' };
+const comparisonMetrics = [
+  ['attacking','goals','Goals',0], ['attacking','xg','xG',2], ['attacking','shots','Shots',0],
+  ['possession','passes','Passes',0], ['possession','carries','Carries',0],
+  ['defending','pressures','Pressures',0], ['defending','tackles','Tackles',0], ['defending','interceptions','Interceptions',0]
+];
+const playerColors = ['#a8ff35','#53a8ff','#ffbe55','#b78cff','#4dded2'];
 const $ = (selector) => document.querySelector(selector);
 const $$ = (selector) => [...document.querySelectorAll(selector)];
 const fmt = (value, digits = 0) => Number(value || 0).toLocaleString(undefined, { maximumFractionDigits: digits });
@@ -26,6 +32,7 @@ function navigate(page) {
   if (page === 'teams' && !state.teams.length) loadTeams();
   if (page === 'players' && !state.players.length) loadPlayers();
   if (page === 'scouting' && !state.scouts.length) loadScouting();
+  if (page === 'compare' && !state.comparePool.length) loadComparisonWorkspace();
 }
 
 async function loadOverview() {
@@ -105,9 +112,96 @@ async function openScout(id) {
   try { const data=await api(`/api/v1/scouting/players/${id}/similar?min_minutes=${Number($('#scout-minutes').value)||0}&limit=5`); $('#similar-players').innerHTML=`<h4 class="detail-section-title">Similar profiles</h4><div class="leader-list">${data.similar_players.map((s,i)=>`<div class="leader-row"><span class="rank">${String(i+1).padStart(2,'0')}</span><span><strong>${esc(s.player_name)}</strong><small>${esc(s.team_name)}</small></span><span class="leader-score">${fmt(s.similarity)}%</span></div>`).join('')||'<p class="muted">No same-position comparisons meet the minutes threshold.</p>'}</div>`; } catch(error){toast(error.message);}
 }
 
+async function loadComparisonWorkspace() {
+  try {
+    state.comparePool = await api('/api/v1/scouting/players?min_minutes=450&limit=1000');
+    state.comparePool.sort((a,b)=>a.player_name.localeCompare(b.player_name));
+    renderComparisonSelection();
+  } catch(error) { toast(error.message); }
+}
+
+function renderComparisonSearch() {
+  const query=$('#compare-search').value.trim().toLowerCase();
+  const results=$('#compare-results');
+  if (query.length < 2) { results.innerHTML=''; return; }
+  const matches=state.comparePool.filter(player => !state.comparisonIds.includes(player.player_id) && `${player.player_name} ${player.team_name} ${player.position}`.toLowerCase().includes(query)).slice(0,6);
+  results.innerHTML=matches.map(player=>`<button class="compare-result" data-compare-add="${player.player_id}"><span><strong>${esc(player.player_name)}</strong><small>${esc(player.team_name)} · ${esc(player.position)}</small></span><em>ADD</em></button>`).join('')||'<p class="muted">No eligible players match that search.</p>';
+  $$('[data-compare-add]').forEach(button=>button.onclick=()=>addComparisonPlayer(Number(button.dataset.compareAdd)));
+}
+
+function addComparisonPlayer(playerId) {
+  if (state.comparisonIds.includes(playerId)) return;
+  if (state.comparisonIds.length >= 5) { toast('A comparison can include up to five players.'); return; }
+  state.comparisonIds.push(playerId);
+  $('#compare-search').value=''; $('#compare-results').innerHTML='';
+  renderComparisonSelection(); renderComparison();
+}
+
+function removeComparisonPlayer(playerId) {
+  state.comparisonIds=state.comparisonIds.filter(id=>id!==playerId);
+  renderComparisonSelection(); renderComparison();
+}
+
+function renderComparisonSelection() {
+  const selected=state.comparisonIds.map(id=>state.comparePool.find(player=>player.player_id===id)).filter(Boolean);
+  $('#compare-selection').innerHTML=selected.map((player,index)=>`<span class="compare-chip" style="--player-color:${playerColors[index]}"><i></i>${esc(player.player_name)}<button type="button" data-compare-remove="${player.player_id}" aria-label="Remove ${esc(player.player_name)}">×</button></span>`).join('');
+  $$('[data-compare-remove]').forEach(button=>button.onclick=()=>removeComparisonPlayer(Number(button.dataset.compareRemove)));
+  $('#compare-guidance').textContent=selected.length<2?`Select ${2-selected.length} more player${selected.length===1?'':'s'} to begin. You can compare up to five.`:`${selected.length} players selected · ${5-selected.length} spaces remaining`;
+  const download=$('#download-comparison');
+  download.classList.toggle('disabled',selected.length<2);
+  download.setAttribute('aria-disabled',String(selected.length<2));
+  if(selected.length<2){download.href='#';download.removeAttribute('download');}
+}
+
+function radarSvg(players) {
+  const size=400, center=200, radius=142, axes=comparisonMetrics.length;
+  const point=(index,value,extra=0)=>{const angle=-Math.PI/2+2*Math.PI*index/axes, distance=radius*value+extra; return [center+Math.cos(angle)*distance,center+Math.sin(angle)*distance];};
+  const points=value=>comparisonMetrics.map((_,index)=>point(index,value).join(',')).join(' ');
+  const grids=[.25,.5,.75,1].map(value=>`<polygon class="radar-grid" points="${points(value)}"></polygon>`).join('');
+  const axisLines=comparisonMetrics.map((_,index)=>{const [x,y]=point(index,1);return `<line class="radar-axis" x1="${center}" y1="${center}" x2="${x}" y2="${y}"></line>`;}).join('');
+  const labels=comparisonMetrics.map(([,key,label],index)=>{const [x,y]=point(index,1,28);return `<text class="radar-label" x="${x}" y="${y}">${label}</text>`;}).join('');
+  const shapes=players.map((player,index)=>`<polygon class="radar-player" style="--player-color:${playerColors[index]}" points="${comparisonMetrics.map(([,key],axis)=>point(axis,player.relative_profile[key]/100).join(',')).join(' ')}"></polygon>`).join('');
+  return `<svg class="radar-chart" viewBox="0 0 ${size} ${size}" role="img" aria-label="League-relative player profile comparison">${grids}${axisLines}${shapes}${labels}</svg>`;
+}
+
+function metricLabel(key) { return comparisonMetrics.find(([,metric])=>metric===key)?.[2]||key; }
+
+async function renderComparison() {
+  const container=$('#comparison-content');
+  if (state.comparisonIds.length<2) { state.comparison=null; container.innerHTML='<div class="empty-state comparison-empty"><span class="empty-glyph">⇄</span><h3>Build a comparison</h3><p>Add two to five players to inspect their production, profile shape and similarity.</p></div>'; return; }
+  loading(container);
+  try {
+    const query=state.comparisonIds.map(id=>`player_ids=${id}`).join('&');
+    state.comparison=await api(`/api/v1/scouting/compare?${query}`);
+    const players=state.comparison.players;
+    const legend=players.map((player,index)=>`<span class="legend-item" style="--player-color:${playerColors[index]}"><i class="legend-dot"></i>${esc(player.player_name)}</span>`).join('');
+    let lastCategory='';
+    const rows=comparisonMetrics.map(([category,key,label,digits])=>{const categoryRow=category!==lastCategory?`<tr class="category-row"><td colspan="${players.length+1}">${category}</td></tr>`:'';lastCategory=category;return `${categoryRow}<tr><td>${label}</td>${players.map(player=>`<td><strong>${fmt(player.totals[key],digits)}</strong><small>${fmt(player.per_90[key],2)} / 90</small></td>`).join('')}</tr>`;}).join('');
+    const insights=players.map((player,index)=>`<article class="insight-card" style="--player-color:${playerColors[index]}"><h4>${esc(player.player_name)}</h4><small>${esc(player.team_name)} · ${esc(player.position)}</small><div class="insight-columns"><div><h5>Statistical strengths</h5><div class="insight-list">${player.strengths.map(key=>`<span class="insight-item"><span>${metricLabel(key)}</span><strong>${fmt(player.per_90[key],2)}/90</strong></span>`).join('')}</div></div><div><h5>Lower relative output</h5><div class="insight-list">${player.development_areas.map(key=>`<span class="insight-item"><span>${metricLabel(key)}</span><strong>${fmt(player.per_90[key],2)}/90</strong></span>`).join('')}</div></div></div></article>`).join('');
+    const names=Object.fromEntries(players.map(player=>[player.player_id,player.player_name]));
+    const similarities=state.comparison.similarities.map(pair=>`<div class="similarity-card"><span>${esc(names[pair.player_a_id])} ↔ ${esc(names[pair.player_b_id])}</span><strong>${fmt(pair.similarity,1)}% similar</strong></div>`).join('');
+    container.innerHTML=`<div class="comparison-layout"><div class="comparison-summary"><div><p class="section-kicker">COMPARISON SET</p><h3>${players.length} player profiles</h3></div><div class="comparison-legend">${legend}</div></div><div class="comparison-visuals"><article class="comparison-panel"><div class="comparison-panel-heading"><div><p class="section-kicker">PROFILE SHAPE</p><h3>League-relative radar</h3></div><span class="muted">Per 90 · min. 450 benchmark</span></div><div class="radar-wrap">${radarSvg(players)}</div></article><article class="comparison-panel"><div class="comparison-panel-heading"><div><p class="section-kicker">OUTPUT</p><h3>Totals and per-90 rates</h3></div><span class="muted">Premier League 2015/16</span></div><div class="table-wrap"><table class="comparison-table"><thead><tr><th>Metric</th>${players.map((player,index)=>`<th style="color:${playerColors[index]}">${esc(player.player_name)}</th>`).join('')}</tr></thead><tbody>${rows}</tbody></table></div></article></div><article class="comparison-panel"><div class="comparison-panel-heading"><div><p class="section-kicker">INTERPRETATION</p><h3>Strengths and development areas</h3></div><span class="muted">Relative to league-qualified players</span></div><div class="insight-grid">${insights}</div></article><article class="comparison-panel"><div class="comparison-panel-heading"><div><p class="section-kicker">STYLE MATCH</p><h3>Pairwise similarity</h3></div><span class="muted">Standardized eight-metric profile</span></div><div class="similarity-grid">${similarities}</div></article></div>`;
+    prepareComparisonReport();
+  } catch(error) { container.innerHTML='<div class="empty-state comparison-empty"><h3>Unable to build comparison</h3></div>'; toast(error.message); }
+}
+
+function prepareComparisonReport() {
+  if (!state.comparison) return;
+  const players=state.comparison.players;
+  const headers=['Player','Club','Position','Appearances','Minutes',...comparisonMetrics.flatMap(([,key,label])=>[`${label} total`,`${label} per 90`]),'Statistical strengths','Lower relative output'];
+  const quote=value=>`"${String(value??'').replaceAll('"','""')}"`;
+  const rows=players.map(player=>[player.player_name,player.team_name,player.position,player.appearances,player.minutes,...comparisonMetrics.flatMap(([,key])=>[player.totals[key],player.per_90[key]]),player.strengths.map(metricLabel).join('; '),player.development_areas.map(metricLabel).join('; ')]);
+  const csv=[headers,...rows].map(row=>row.map(quote).join(',')).join('\n');
+  const link=$('#download-comparison');
+  link.href=`data:text/csv;charset=utf-8,${encodeURIComponent(csv)}`;
+  link.download='premier-league-2015-16-player-comparison.csv';
+}
+
 $$('.nav-item').forEach(item=>item.onclick=()=>navigate(item.dataset.page));
 $('#match-search').addEventListener('input',renderMatches);
 $('#player-search').addEventListener('input',renderPlayers);
 $('#player-minutes').addEventListener('change',loadPlayers);
 $('#run-scout').addEventListener('click',loadScouting);
+$('#compare-search').addEventListener('input',renderComparisonSearch);
+$('#download-comparison').addEventListener('click',event=>{if(event.currentTarget.classList.contains('disabled'))event.preventDefault();});
 const initial=location.hash.slice(1); navigate(titles[initial]?initial:'overview'); loadOverview();

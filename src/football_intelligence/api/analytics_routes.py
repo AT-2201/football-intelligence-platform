@@ -2,7 +2,11 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
-from football_intelligence.analytics.scouting import scouting_pool, similar_players
+from football_intelligence.analytics.scouting import (
+    compare_players,
+    scouting_pool,
+    similar_players,
+)
 from football_intelligence.config import Settings, get_settings
 from football_intelligence.db import get_db
 from football_intelligence.models import (
@@ -21,9 +25,7 @@ router = APIRouter(prefix="/api/v1")
 
 
 @router.get("/overview")
-def overview(
-    db: Session = Depends(get_db), settings: Settings = Depends(get_settings)
-) -> dict:
+def overview(db: Session = Depends(get_db), settings: Settings = Depends(get_settings)) -> dict:
     scope = (settings.statsbomb_competition_id, settings.statsbomb_season_id)
     competition = db.get(CompetitionSeason, scope)
     summary = db.get(SeasonSummary, scope)
@@ -230,6 +232,25 @@ def scouting_players(
         position=position,
         search=search,
     )[:limit]
+
+
+@router.get("/scouting/compare")
+def player_comparison(
+    player_ids: list[int] = Query(...),
+    db: Session = Depends(get_db),
+    settings: Settings = Depends(get_settings),
+) -> dict:
+    try:
+        return compare_players(
+            db,
+            settings.statsbomb_competition_id,
+            settings.statsbomb_season_id,
+            player_ids,
+        )
+    except ValueError as error:
+        raise HTTPException(400, str(error)) from error
+    except LookupError as error:
+        raise HTTPException(404, str(error)) from error
 
 
 @router.get("/scouting/players/{player_id}/similar")
