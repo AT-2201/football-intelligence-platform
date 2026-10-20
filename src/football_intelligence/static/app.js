@@ -103,8 +103,8 @@ async function openPlayer(id) {
 }
 
 async function loadScouting() {
-  const list=$('#scout-list'); loading(list); const minutes=Number($('#scout-minutes').value)||0, position=$('#scout-position').value.trim();
-  try { state.scouts=await api(`/api/v1/scouting/players?min_minutes=${minutes}&position=${encodeURIComponent(position)}&limit=200`); list.innerHTML=state.scouts.map(p=>`<button class="data-row" data-scout="${p.player_id}"><span><strong>${esc(p.player_name)}</strong><small>${esc(p.team_name)} · ${esc(p.position)} · ${fmt(p.minutes)} min</small></span><span class="data-number">${fmt(p.appearances)}<small>APPS</small></span></button>`).join('')||'<div class="loading">No qualified players. Lower the minimum minutes or broaden the position.</div>'; $$('#scout-list [data-scout]').forEach(el=>el.onclick=()=>openScout(el.dataset.scout)); }
+  const list=$('#scout-list'); loading(list); const minutes=Number($('#scout-minutes').value)||0, search=$('#scout-player').value.trim(), position=$('#scout-position').value.trim();
+  try { state.scouts=await api(`/api/v1/scouting/players?min_minutes=${minutes}&search=${encodeURIComponent(search)}&position=${encodeURIComponent(position)}&limit=200`); list.innerHTML=state.scouts.map(p=>`<button class="data-row" data-scout="${p.player_id}"><span><strong>${esc(p.player_name)}</strong><small>${esc(p.team_name)} · ${esc(p.position)} · ${fmt(p.minutes)} min</small></span><span class="data-number">${fmt(p.appearances)}<small>APPS</small></span></button>`).join('')||'<div class="loading">No players match these filters. Adjust the player, minimum minutes or position search.</div>'; $$('#scout-list [data-scout]').forEach(el=>el.onclick=()=>openScout(el.dataset.scout)); }
   catch(error){list.innerHTML='';toast(error.message);}
 }
 async function openScout(id) {
@@ -202,6 +202,7 @@ $('#match-search').addEventListener('input',renderMatches);
 $('#player-search').addEventListener('input',renderPlayers);
 $('#player-minutes').addEventListener('change',loadPlayers);
 $('#run-scout').addEventListener('click',loadScouting);
+['#scout-player','#scout-position'].forEach(selector=>$(selector).addEventListener('keydown',event=>{if(event.key==='Enter')loadScouting();}));
 $('#compare-search').addEventListener('input',renderComparisonSearch);
 $('#download-comparison').addEventListener('click',event=>{if(event.currentTarget.classList.contains('disabled'))event.preventDefault();});
 const initial=location.hash.slice(1); navigate(titles[initial]?initial:'overview'); loadOverview();
