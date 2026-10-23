@@ -6,7 +6,7 @@
   <meta name="description" content="Premier League match, player, team and scouting intelligence.">
   <title>Touchline Intelligence</title>
   <link rel="icon" href="./assets/favicon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="./assets/styles.css?v=5">
+  <link rel="stylesheet" href="./assets/styles.css?v=6">
 </head>
 <body>
   <div class="app-shell">
@@ -83,14 +83,15 @@
       </section>
 
       <section class="page" id="page-scouting">
-        <div class="intro-row"><div><p class="section-kicker">RECRUITMENT</p><h2>Scouting workspace</h2></div><p class="lede">Filter qualified players, review their season output and find stylistic alternatives.</p></div>
+        <div class="intro-row"><div><p class="section-kicker">TRANSFER INTELLIGENCE</p><h2>Player similarity explorer</h2></div><p class="lede">Build an explainable replacement shortlist based on position, role and actual on-ball output.</p></div>
         <div class="toolbar filters scouting-controls">
           <label>Minimum minutes<input id="scout-minutes" type="number" min="0" step="90" value="450"></label>
           <label>Player<input id="scout-player" type="search" placeholder="e.g. Harry Kane" aria-label="Search scouting players"></label>
           <label>Position<input id="scout-position" type="search" placeholder="e.g. Centre Back"></label>
+          <label>Similarity role<select id="scout-role" aria-label="Choose a similarity role"><option value="balanced">Balanced profile</option><option value="progressor">Ball progressor</option><option value="creator">Possession creator</option><option value="ball_winner">Ball winner</option><option value="goal_threat">Goal threat</option></select></label>
           <button class="primary-button" id="run-scout">Run search</button>
         </div>
-        <div class="master-detail"><div class="data-list" id="scout-list"></div><aside class="detail-panel" id="scout-detail"><div class="empty-state"><span class="empty-glyph">◇</span><h3>Select a candidate</h3><p>Inspect season totals, per-90 output and similar players.</p></div></aside></div>
+        <div class="master-detail"><div class="data-list" id="scout-list"></div><aside class="detail-panel" id="scout-detail"><div class="empty-state"><span class="empty-glyph">◇</span><h3>Select a reference player</h3><p>Choose a player to generate a role-aware replacement shortlist.</p></div></aside></div>
       </section>
 
       <section class="page" id="page-compare">
@@ -109,7 +110,7 @@
     </main>
   </div>
   <script src="./assets/data.js"></script>
-  <script src="./assets/data-adapter.js?v=3"></script>
-  <script src="./assets/app.js?v=4" defer></script>
+  <script src="./assets/data-adapter.js?v=4"></script>
+  <script src="./assets/app.js?v=5" defer></script>
 </body>
 </html>

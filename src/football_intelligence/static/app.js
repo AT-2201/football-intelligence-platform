@@ -1,5 +1,5 @@
-const state = { overview: null, matches: [], teams: [], players: [], scouts: [], comparePool: [], comparisonIds: [], comparison: null };
-const titles = { overview: 'League intelligence', matches: 'Match analysis', teams: 'Team analysis', players: 'Player analysis', scouting: 'Scouting workspace', compare: 'Player comparison' };
+const state = { overview: null, matches: [], teams: [], players: [], scouts: [], selectedScoutId: null, comparePool: [], comparisonIds: [], comparison: null };
+const titles = { overview: 'League intelligence', matches: 'Match analysis', teams: 'Team analysis', players: 'Player analysis', scouting: 'Player similarity explorer', compare: 'Player comparison' };
 const comparisonMetrics = [
   ['attacking','goals','Goals',0], ['attacking','xg','xG',2], ['attacking','shots','Shots',0],
   ['possession','passes','Passes',0], ['possession','carries','Carries',0],
@@ -108,8 +108,20 @@ async function loadScouting() {
   catch(error){list.innerHTML='';toast(error.message);}
 }
 async function openScout(id) {
-  $$('#scout-list .data-row').forEach(el=>el.classList.toggle('selected',el.dataset.scout===String(id))); const p=state.scouts.find(x=>x.player_id===Number(id)); if(!p)return; const detail=$('#scout-detail'); const metrics=[['goals','Goals'],['xg','xG'],['shots','Shots'],['passes','Passes'],['carries','Carries'],['pressures','Pressures'],['tackles','Tackles'],['interceptions','Interceptions']]; detail.innerHTML=`<p class="section-kicker">${esc(p.position)} · ${esc(p.team_name)}</p><h3 class="detail-title">${esc(p.player_name)}</h3><p class="detail-subtitle">${fmt(p.appearances)} appearances · ${fmt(p.minutes)} minutes</p><h4 class="detail-section-title">Season output</h4><div class="scout-stat-grid">${metrics.map(([key,label])=>`<div class="scout-stat"><span>${label}</span><strong>${fmt(p.totals[key],key==='xg'?2:0)}</strong><small>${fmt(p.per_90[key],2)} / 90</small></div>`).join('')}</div><div id="similar-players"><div class="loading">Finding similar players…</div></div>`;
-  try { const data=await api(`/api/v1/scouting/players/${id}/similar?min_minutes=${Number($('#scout-minutes').value)||0}&limit=5`); $('#similar-players').innerHTML=`<h4 class="detail-section-title">Similar profiles</h4><div class="leader-list">${data.similar_players.map((s,i)=>`<div class="leader-row"><span class="rank">${String(i+1).padStart(2,'0')}</span><span><strong>${esc(s.player_name)}</strong><small>${esc(s.team_name)}</small></span><span class="leader-score">${fmt(s.similarity)}%</span></div>`).join('')||'<p class="muted">No same-position comparisons meet the minutes threshold.</p>'}</div>`; } catch(error){toast(error.message);}
+  state.selectedScoutId=Number(id);
+  $$('#scout-list .data-row').forEach(el=>el.classList.toggle('selected',el.dataset.scout===String(id))); const p=state.scouts.find(x=>x.player_id===Number(id)); if(!p)return; const detail=$('#scout-detail'); const metrics=[['goals','Goals'],['xg','xG'],['shots','Shots'],['passes','Passes'],['carries','Carries'],['pressures','Pressures'],['tackles','Tackles'],['interceptions','Interceptions']]; detail.innerHTML=`<p class="section-kicker">REFERENCE PLAYER · ${esc(p.position)}</p><div class="scout-player-heading"><div><h3 class="detail-title">${esc(p.player_name)}</h3><p class="detail-subtitle">${esc(p.team_name)} · ${fmt(p.appearances)} appearances · ${fmt(p.minutes)} minutes</p></div><span class="role-badge">Building shortlist…</span></div><h4 class="detail-section-title">Season output</h4><div class="scout-stat-grid">${metrics.map(([key,label])=>`<div class="scout-stat"><span>${label}</span><strong>${fmt(p.totals[key],key==='xg'?2:0)}</strong><small>${fmt(p.per_90[key],2)} / 90</small></div>`).join('')}</div><div id="similar-players"><div class="loading">Finding and explaining replacement candidates…</div></div>`;
+  try {
+    const role=$('#scout-role').value;
+    const data=await api(`/api/v1/scouting/players/${id}/similar?min_minutes=${Number($('#scout-minutes').value)||0}&limit=5&role=${encodeURIComponent(role)}`);
+    $('.role-badge').textContent=data.role.label;
+    const cards=data.similar_players.map((candidate,index)=>{
+      const reasons=candidate.match_reasons.map(reason=>`<span class="match-reason"><strong>${esc(metricLabel(reason.metric))}</strong>${fmt(reason.target,2)} → ${fmt(reason.candidate,2)} /90</span>`).join('');
+      const tradeoffs=candidate.trade_offs.map(item=>{const direction=item.difference>0?'more':'less';return `<li><strong>${fmt(Math.abs(item.difference),2)} ${direction}</strong> ${esc(metricLabel(item.metric))} per 90</li>`;}).join('');
+      return `<article class="replacement-card"><div class="replacement-rank">${String(index+1).padStart(2,'0')}</div><div class="replacement-main"><div class="replacement-heading"><div><h5>${esc(candidate.player_name)}</h5><p>${esc(candidate.team_name)} · ${esc(candidate.position)}</p></div><div class="similarity-score"><strong>${fmt(candidate.similarity,1)}%</strong><span>PROFILE MATCH</span></div></div><div class="reason-block"><span class="reason-label">Closest traits</span><div class="reason-chips">${reasons}</div></div><div class="tradeoff-row"><div><span class="reason-label">Key trade-offs</span><ul>${tradeoffs}</ul></div><button class="secondary-button compare-replacement" data-compare-replacement="${candidate.player_id}">Compare players</button></div></div></article>`;
+    }).join('');
+    $('#similar-players').innerHTML=`<div class="similarity-intro"><div><p class="section-kicker">REPLACEMENT SHORTLIST · ${esc(data.position_group)}</p><h4>Why these players match</h4><p>${esc(data.role.description)}</p></div><span>Priority: ${data.role.priority_metrics.map(metricLabel).join(' · ')}</span></div><div class="replacement-list">${cards||'<p class="muted">No players in this position family meet the minutes threshold.</p>'}</div><p class="method-note">${esc(data.methodology)} Similarity describes statistical profile—not quality, value or tactical fit.</p>`;
+    $$('[data-compare-replacement]').forEach(button=>button.onclick=()=>{state.comparisonIds=[state.selectedScoutId,Number(button.dataset.compareReplacement)];navigate('compare');if(state.comparePool.length){renderComparisonSelection();renderComparison();}});
+  } catch(error){toast(error.message);}
 }
 
 async function loadComparisonWorkspace() {
@@ -117,6 +129,7 @@ async function loadComparisonWorkspace() {
     state.comparePool = await api('/api/v1/scouting/players?min_minutes=450&limit=1000');
     state.comparePool.sort((a,b)=>a.player_name.localeCompare(b.player_name));
     renderComparisonSelection();
+    if(state.comparisonIds.length>=2)renderComparison();
   } catch(error) { toast(error.message); }
 }
 
@@ -203,6 +216,7 @@ $('#player-search').addEventListener('input',renderPlayers);
 $('#player-minutes').addEventListener('change',loadPlayers);
 $('#run-scout').addEventListener('click',loadScouting);
 ['#scout-player','#scout-position'].forEach(selector=>$(selector).addEventListener('keydown',event=>{if(event.key==='Enter')loadScouting();}));
+$('#scout-role').addEventListener('change',()=>{if(state.selectedScoutId)openScout(state.selectedScoutId);});
 $('#compare-search').addEventListener('input',renderComparisonSearch);
 $('#download-comparison').addEventListener('click',event=>{if(event.currentTarget.classList.contains('disabled'))event.preventDefault();});
 const initial=location.hash.slice(1); navigate(titles[initial]?initial:'overview'); loadOverview();
