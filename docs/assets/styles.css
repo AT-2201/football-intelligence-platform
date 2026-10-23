@@ -148,8 +148,6 @@ input:focus, select:focus { border-color: var(--green); box-shadow: 0 0 0 3px va
 .scout-stat span { color:var(--muted); font-size:.7rem; }
 .scout-stat strong { font-size:1.15rem; margin-top:2px; }
 .scout-stat small { color:var(--green); font-size:.68rem; margin-top:2px; }
-.scout-player-heading { display:flex; align-items:start; justify-content:space-between; gap:12px; }
-.role-badge { flex:0 0 auto; padding:6px 9px; border:1px solid rgba(168,255,53,.3); border-radius:999px; background:var(--green-soft); color:var(--green); font-size:.66rem; font-weight:800; }
 .similarity-intro { display:flex; justify-content:space-between; align-items:end; gap:16px; padding-top:2px; margin-bottom:12px; }
 .similarity-intro h4 { margin:3px 0; font-size:1rem; }
 .similarity-intro p:not(.section-kicker) { max-width:480px; margin:0; color:var(--muted); font-size:.74rem; }

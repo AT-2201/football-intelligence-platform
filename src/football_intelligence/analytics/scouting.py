@@ -18,69 +18,6 @@ VECTOR_METRICS = (
     "tackles",
     "interceptions",
 )
-ROLE_PROFILES: dict[str, dict[str, Any]] = {
-    "balanced": {
-        "label": "Balanced profile",
-        "description": "Weights attacking, possession and defensive output evenly.",
-        "weights": {metric: 1.0 for metric in VECTOR_METRICS},
-    },
-    "progressor": {
-        "label": "Ball progressor",
-        "description": "Prioritizes passing volume and carrying contribution.",
-        "weights": {
-            "goals": 0.35,
-            "xg": 0.45,
-            "shots": 0.35,
-            "passes": 2.5,
-            "carries": 2.5,
-            "pressures": 0.6,
-            "tackles": 0.4,
-            "interceptions": 0.4,
-        },
-    },
-    "creator": {
-        "label": "Possession creator",
-        "description": "Emphasizes passing, carrying and attacking involvement.",
-        "weights": {
-            "goals": 0.8,
-            "xg": 1.0,
-            "shots": 0.7,
-            "passes": 2.3,
-            "carries": 2.0,
-            "pressures": 0.7,
-            "tackles": 0.35,
-            "interceptions": 0.35,
-        },
-    },
-    "ball_winner": {
-        "label": "Ball winner",
-        "description": "Prioritizes pressure, tackling and interception activity.",
-        "weights": {
-            "goals": 0.25,
-            "xg": 0.25,
-            "shots": 0.25,
-            "passes": 0.8,
-            "carries": 0.45,
-            "pressures": 2.2,
-            "tackles": 2.5,
-            "interceptions": 2.5,
-        },
-    },
-    "goal_threat": {
-        "label": "Goal threat",
-        "description": "Emphasizes shooting volume, expected goals and goals.",
-        "weights": {
-            "goals": 2.5,
-            "xg": 2.5,
-            "shots": 2.2,
-            "passes": 0.35,
-            "carries": 1.0,
-            "pressures": 0.55,
-            "tackles": 0.2,
-            "interceptions": 0.2,
-        },
-    },
-}
 _POSITION_CACHE: dict[tuple[int, int], dict[int, str]] = {}
 
 
@@ -112,7 +49,6 @@ def _metric_explanation(
     target: dict[str, Any],
     candidate: dict[str, Any],
     deviations: dict[str, float],
-    weights: dict[str, float],
 ) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
     comparisons = []
     for metric in VECTOR_METRICS:
@@ -125,14 +61,15 @@ def _metric_explanation(
                 "target": round(target_value, 2),
                 "candidate": round(candidate_value, 2),
                 "difference": round(candidate_value - target_value, 2),
-                "weighted_gap": standardized_gap * math.sqrt(weights[metric]),
+                "standardized_gap": standardized_gap,
             }
         )
-    role_metrics = [item for item in comparisons if weights[item["metric"]] >= 0.6]
-    matches = sorted(role_metrics, key=lambda item: item["weighted_gap"])[:3]
-    trade_offs = sorted(comparisons, key=lambda item: item["weighted_gap"], reverse=True)[:2]
+    matches = sorted(comparisons, key=lambda item: item["standardized_gap"])[:3]
+    trade_offs = sorted(
+        comparisons, key=lambda item: item["standardized_gap"], reverse=True
+    )[:2]
     for item in matches + trade_offs:
-        item.pop("weighted_gap", None)
+        item.pop("standardized_gap", None)
     return matches, trade_offs
 
 
@@ -142,11 +79,8 @@ def similar_player_records(
     *,
     min_minutes: float = 450,
     limit: int = 10,
-    role: str = "balanced",
 ) -> dict[str, Any] | None:
     """Rank position-aware replacements and explain the strongest matches and trade-offs."""
-    if role not in ROLE_PROFILES:
-        raise ValueError(f"Unknown similarity role: {role}")
     target = next((dict(record) for record in pool if record["player_id"] == player_id), None)
     if target is None:
         return None
@@ -168,42 +102,30 @@ def similar_player_records(
         metric: pstdev(record["per_90"][metric] for record in comparison) or 1.0
         for metric in VECTOR_METRICS
     }
-    profile = ROLE_PROFILES[role]
-    weights = profile["weights"]
-    weight_total = sum(weights.values())
-
     for candidate in candidates:
         distance = math.sqrt(
             sum(
-                weights[metric]
-                * (
+                (
                     (candidate["per_90"][metric] - means[metric]) / deviations[metric]
                     - (target["per_90"][metric] - means[metric]) / deviations[metric]
                 )
                 ** 2
                 for metric in VECTOR_METRICS
             )
-            / weight_total
+            / len(VECTOR_METRICS)
         )
-        matches, trade_offs = _metric_explanation(target, candidate, deviations, weights)
+        matches, trade_offs = _metric_explanation(target, candidate, deviations)
         candidate["similarity"] = round(100 / (1 + distance), 1)
         candidate["match_reasons"] = matches
         candidate["trade_offs"] = trade_offs
         candidate["position_group"] = target_group
     candidates.sort(key=lambda record: record["similarity"], reverse=True)
     target["position_group"] = target_group
-    priority_metrics = sorted(VECTOR_METRICS, key=lambda metric: weights[metric], reverse=True)[:3]
     return {
         "target": target,
-        "role": {
-            "key": role,
-            "label": profile["label"],
-            "description": profile["description"],
-            "priority_metrics": priority_metrics,
-        },
         "position_group": target_group,
         "similar_players": candidates[:limit],
-        "methodology": "Weighted per-90 distance within the player's position family.",
+        "methodology": "Standardized per-90 distance within the player's position family.",
     }
 
 
@@ -363,7 +285,6 @@ def similar_players(
     *,
     min_minutes: float = 450,
     limit: int = 10,
-    role: str = "balanced",
 ) -> dict[str, Any] | None:
     pool = scouting_pool(
         session,
@@ -376,7 +297,6 @@ def similar_players(
         player_id,
         min_minutes=min_minutes,
         limit=limit,
-        role=role,
     )
 
 

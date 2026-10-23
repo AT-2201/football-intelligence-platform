@@ -1,12 +1,5 @@
 (function () {
   const metrics = ['goals', 'xg', 'shots', 'passes', 'carries', 'pressures', 'tackles', 'interceptions'];
-  const roleProfiles = {
-    balanced: {label:'Balanced profile', description:'Weights attacking, possession and defensive output evenly.', weights:{goals:1,xg:1,shots:1,passes:1,carries:1,pressures:1,tackles:1,interceptions:1}},
-    progressor: {label:'Ball progressor', description:'Prioritizes passing volume and carrying contribution.', weights:{goals:.35,xg:.45,shots:.35,passes:2.5,carries:2.5,pressures:.6,tackles:.4,interceptions:.4}},
-    creator: {label:'Possession creator', description:'Emphasizes passing, carrying and attacking involvement.', weights:{goals:.8,xg:1,shots:.7,passes:2.3,carries:2,pressures:.7,tackles:.35,interceptions:.35}},
-    ball_winner: {label:'Ball winner', description:'Prioritizes pressure, tackling and interception activity.', weights:{goals:.25,xg:.25,shots:.25,passes:.8,carries:.45,pressures:2.2,tackles:2.5,interceptions:2.5}},
-    goal_threat: {label:'Goal threat', description:'Emphasizes shooting volume, expected goals and goals.', weights:{goals:2.5,xg:2.5,shots:2.2,passes:.35,carries:1,pressures:.55,tackles:.2,interceptions:.2}}
-  };
   const clone = value => JSON.parse(JSON.stringify(value));
 
   function positionGroup(position) {
@@ -44,8 +37,6 @@
   function similarPlayers(data, playerId, params) {
     const minMinutes = Number(params.get('min_minutes') || 450);
     const limit = Number(params.get('limit') || 10);
-    const roleKey = params.get('role') || 'balanced';
-    const role = roleProfiles[roleKey] || roleProfiles.balanced;
     const sourceTarget = data.scoutingBase.find(player => player.player_id === playerId);
     if (!sourceTarget) return undefined;
     const target = clone(sourceTarget);
@@ -57,22 +48,20 @@
       const variance = comparison.reduce((sum,p) => sum + Math.pow(p.per_90[metric] - means[metric], 2), 0) / comparison.length;
       return [metric, Math.sqrt(variance) || 1];
     }));
-    const weightTotal = metrics.reduce((sum,metric) => sum + role.weights[metric], 0);
     for (const player of candidates) {
       const distance = Math.sqrt(metrics.reduce((sum,metric) => {
         const difference = (player.per_90[metric] - target.per_90[metric]) / deviations[metric];
-        return sum + role.weights[metric] * difference * difference;
-      }, 0) / weightTotal);
-      const comparisons = metrics.map(metric => ({metric, target:Number(target.per_90[metric].toFixed(2)), candidate:Number(player.per_90[metric].toFixed(2)), difference:Number((player.per_90[metric]-target.per_90[metric]).toFixed(2)), weightedGap:Math.abs(player.per_90[metric]-target.per_90[metric])/deviations[metric]*Math.sqrt(role.weights[metric])}));
-      player.match_reasons = comparisons.filter(item => role.weights[item.metric] >= .6).sort((a,b) => a.weightedGap-b.weightedGap).slice(0,3).map(({weightedGap,...item}) => item);
-      player.trade_offs = comparisons.sort((a,b) => b.weightedGap-a.weightedGap).slice(0,2).map(({weightedGap,...item}) => item);
+        return sum + difference * difference;
+      }, 0) / metrics.length);
+      const comparisons = metrics.map(metric => ({metric, target:Number(target.per_90[metric].toFixed(2)), candidate:Number(player.per_90[metric].toFixed(2)), difference:Number((player.per_90[metric]-target.per_90[metric]).toFixed(2)), standardizedGap:Math.abs(player.per_90[metric]-target.per_90[metric])/deviations[metric]}));
+      player.match_reasons = [...comparisons].sort((a,b) => a.standardizedGap-b.standardizedGap).slice(0,3).map(({standardizedGap,...item}) => item);
+      player.trade_offs = [...comparisons].sort((a,b) => b.standardizedGap-a.standardizedGap).slice(0,2).map(({standardizedGap,...item}) => item);
       player.similarity = Number((100 / (1 + distance)).toFixed(1));
       player.position_group = group;
     }
     candidates.sort((a,b) => b.similarity - a.similarity);
     target.position_group = group;
-    const priorityMetrics = [...metrics].sort((a,b) => role.weights[b]-role.weights[a]).slice(0,3);
-    return { target, role:{key:roleKey,label:role.label,description:role.description,priority_metrics:priorityMetrics}, position_group:group, similar_players:candidates.slice(0, limit), methodology:"Weighted per-90 distance within the player's position family." };
+    return { target, position_group:group, similar_players:candidates.slice(0, limit), methodology:"Standardized per-90 distance within the player's position family." };
   }
 
   function comparePlayers(data, playerIds) {

@@ -46,34 +46,18 @@ def test_comparison_requires_two_to_five_unique_players() -> None:
         compare_player_records([_player(1, "Alpha", 1.0)], [1, 1])
 
 
-def test_role_specific_similarity_explains_matches_and_trade_offs() -> None:
+def test_similarity_is_position_aware_and_explains_matches_and_trade_offs() -> None:
     target = _player(1, "Target", 1.0)
     target["position"] = "Right Center Midfield"
-    progressor = _player(2, "Progressor", 1.0)
-    progressor["position"] = "Center Attacking Midfield"
-    ball_winner = _player(3, "Ball Winner", 1.0)
-    ball_winner["position"] = "Left Center Midfield"
-    for metric in ("pressures", "tackles", "interceptions"):
-        progressor["per_90"][metric] *= 4
-    for metric in ("passes", "carries"):
-        ball_winner["per_90"][metric] *= 4
+    midfielder = _player(2, "Midfielder", 1.1)
+    midfielder["position"] = "Center Attacking Midfield"
+    defender = _player(3, "Defender", 1.0)
+    defender["position"] = "Left Center Back"
 
-    progressive_result = similar_player_records(
-        [target, progressor, ball_winner], 1, role="progressor"
-    )
-    defensive_result = similar_player_records(
-        [target, progressor, ball_winner], 1, role="ball_winner"
-    )
+    result = similar_player_records([target, midfielder, defender], 1)
 
-    assert progressive_result is not None
-    assert defensive_result is not None
-    assert progressive_result["position_group"] == "Central Midfielder"
-    assert progressive_result["similar_players"][0]["player_name"] == "Progressor"
-    assert defensive_result["similar_players"][0]["player_name"] == "Ball Winner"
-    assert len(progressive_result["similar_players"][0]["match_reasons"]) == 3
-    assert len(progressive_result["similar_players"][0]["trade_offs"]) == 2
-
-
-def test_similarity_rejects_unknown_role() -> None:
-    with pytest.raises(ValueError, match="Unknown similarity role"):
-        similar_player_records([_player(1, "Alpha", 1.0)], 1, role="sweeper")
+    assert result is not None
+    assert result["position_group"] == "Central Midfielder"
+    assert [player["player_name"] for player in result["similar_players"]] == ["Midfielder"]
+    assert len(result["similar_players"][0]["match_reasons"]) == 3
+    assert len(result["similar_players"][0]["trade_offs"]) == 2

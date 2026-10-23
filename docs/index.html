@@ -83,15 +83,14 @@
       </section>
 
       <section class="page" id="page-scouting">
-        <div class="intro-row"><div><p class="section-kicker">TRANSFER INTELLIGENCE</p><h2>Player similarity explorer</h2></div><p class="lede">Build an explainable replacement shortlist based on position, role and actual on-ball output.</p></div>
+        <div class="intro-row"><div><p class="section-kicker">TRANSFER INTELLIGENCE</p><h2>Player similarity explorer</h2></div><p class="lede">Find statistically similar players and understand the evidence behind every match.</p></div>
         <div class="toolbar filters scouting-controls">
           <label>Minimum minutes<input id="scout-minutes" type="number" min="0" step="90" value="450"></label>
           <label>Player<input id="scout-player" type="search" placeholder="e.g. Harry Kane" aria-label="Search scouting players"></label>
           <label>Position<input id="scout-position" type="search" placeholder="e.g. Centre Back"></label>
-          <label>Similarity role<select id="scout-role" aria-label="Choose a similarity role"><option value="balanced">Balanced profile</option><option value="progressor">Ball progressor</option><option value="creator">Possession creator</option><option value="ball_winner">Ball winner</option><option value="goal_threat">Goal threat</option></select></label>
           <button class="primary-button" id="run-scout">Run search</button>
         </div>
-        <div class="master-detail"><div class="data-list" id="scout-list"></div><aside class="detail-panel" id="scout-detail"><div class="empty-state"><span class="empty-glyph">◇</span><h3>Select a reference player</h3><p>Choose a player to generate a role-aware replacement shortlist.</p></div></aside></div>
+        <div class="master-detail"><div class="data-list" id="scout-list"></div><aside class="detail-panel" id="scout-detail"><div class="empty-state"><span class="empty-glyph">◇</span><h3>Select a reference player</h3><p>Choose a player to generate an explainable similarity shortlist.</p></div></aside></div>
       </section>
 
       <section class="page" id="page-compare">
@@ -110,7 +109,7 @@
     </main>
   </div>
   <script src="./assets/data.js"></script>
-  <script src="./assets/data-adapter.js?v=4"></script>
-  <script src="./assets/app.js?v=5" defer></script>
+  <script src="./assets/data-adapter.js?v=5"></script>
+  <script src="./assets/app.js?v=6" defer></script>
 </body>
 </html>

@@ -258,22 +258,17 @@ def player_similarity(
     player_id: int,
     min_minutes: float = Query(450, ge=0),
     limit: int = Query(10, ge=1, le=50),
-    role: str = Query("balanced"),
     db: Session = Depends(get_db),
     settings: Settings = Depends(get_settings),
 ) -> dict:
-    try:
-        result = similar_players(
-            db,
-            settings.statsbomb_competition_id,
-            settings.statsbomb_season_id,
-            player_id,
-            min_minutes=min_minutes,
-            limit=limit,
-            role=role,
-        )
-    except ValueError as error:
-        raise HTTPException(400, str(error)) from error
+    result = similar_players(
+        db,
+        settings.statsbomb_competition_id,
+        settings.statsbomb_season_id,
+        player_id,
+        min_minutes=min_minutes,
+        limit=limit,
+    )
     if result is None:
         raise HTTPException(404, "Player not found in the current competition-season")
     return result
