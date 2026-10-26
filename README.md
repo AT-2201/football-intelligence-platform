@@ -144,7 +144,8 @@ available in the generated OpenAPI documentation at `/docs`.
   values rather than league percentiles.
 
 The scouting workspace is a screening tool, not an objective player valuation. The first
-similarity version uses the eight reliable V1 season metrics and position-family cohorts.
+similarity version uses the eight reliable V1 season metrics, one shared league-wide
+450-minute normalization benchmark across every page, and position-family candidate cohorts.
 Its output should be paired with video, age, contract, physical, tactical-role, and
 contextual analysis before recruitment decisions. Progressive actions, pass direction,
 and possession-value features are planned event-level enrichments rather than inferred

@@ -86,3 +86,21 @@ def test_replacement_finder_applies_recruitment_filters() -> None:
     ]
     assert result["screening"]["same_team_excluded"] is True
     assert "minutes_difference" in result["replacement_candidates"][0]
+
+
+def test_similarity_score_is_identical_in_replacements_and_comparison() -> None:
+    target = _player(1, "Target", 1.0)
+    target["position"] = "Center Forward"
+    candidate = _player(2, "Candidate", 0.86)
+    candidate["position"] = "Right Center Forward"
+    cross_position_outlier = _player(3, "Outlier", 4.0)
+    cross_position_outlier["position"] = "Left Center Back"
+    pool = [target, candidate, cross_position_outlier]
+
+    replacements = replacement_player_records(pool, 1)
+    comparison = compare_player_records(pool, [1, 2])
+
+    assert replacements is not None
+    replacement_score = replacements["replacement_candidates"][0]["similarity"]
+    comparison_score = comparison["similarities"][0]["similarity"]
+    assert replacement_score == comparison_score

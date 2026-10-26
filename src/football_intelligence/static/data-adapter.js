@@ -2,6 +2,24 @@
   const metrics = ['goals', 'xg', 'shots', 'passes', 'carries', 'pressures', 'tackles', 'interceptions'];
   const clone = value => JSON.parse(JSON.stringify(value));
 
+  function similarityDeviations(data) {
+    const benchmark = data.scoutingBase.filter(player => player.minutes >= 450);
+    const pool = benchmark.length ? benchmark : data.scoutingBase;
+    return Object.fromEntries(metrics.map(metric => {
+      const mean = pool.reduce((sum,player) => sum + player.per_90[metric], 0) / pool.length;
+      const variance = pool.reduce((sum,player) => sum + Math.pow(player.per_90[metric] - mean, 2), 0) / pool.length;
+      return [metric, Math.sqrt(variance) || 1];
+    }));
+  }
+
+  function similarityScore(first, second, deviations) {
+    const distance = Math.sqrt(metrics.reduce((sum,metric) => {
+      const difference = (first.per_90[metric] - second.per_90[metric]) / deviations[metric];
+      return sum + difference * difference;
+    }, 0) / metrics.length);
+    return Number((100 / (1 + distance)).toFixed(1));
+  }
+
   function positionGroup(position) {
     const normalized = position.toLowerCase();
     if (normalized.includes('goalkeeper')) return 'Goalkeeper';
@@ -42,26 +60,17 @@
     const target = clone(sourceTarget);
     const group = positionGroup(target.position);
     const candidates = data.scoutingBase.filter(player => player.player_id !== playerId && player.minutes >= minMinutes && positionGroup(player.position) === group).map(clone);
-    const comparison = [...candidates, target];
-    const means = Object.fromEntries(metrics.map(metric => [metric, comparison.reduce((sum,p) => sum + p.per_90[metric], 0) / comparison.length]));
-    const deviations = Object.fromEntries(metrics.map(metric => {
-      const variance = comparison.reduce((sum,p) => sum + Math.pow(p.per_90[metric] - means[metric], 2), 0) / comparison.length;
-      return [metric, Math.sqrt(variance) || 1];
-    }));
+    const deviations = similarityDeviations(data);
     for (const player of candidates) {
-      const distance = Math.sqrt(metrics.reduce((sum,metric) => {
-        const difference = (player.per_90[metric] - target.per_90[metric]) / deviations[metric];
-        return sum + difference * difference;
-      }, 0) / metrics.length);
       const comparisons = metrics.map(metric => ({metric, target:Number(target.per_90[metric].toFixed(2)), candidate:Number(player.per_90[metric].toFixed(2)), difference:Number((player.per_90[metric]-target.per_90[metric]).toFixed(2)), standardizedGap:Math.abs(player.per_90[metric]-target.per_90[metric])/deviations[metric]}));
       player.match_reasons = [...comparisons].sort((a,b) => a.standardizedGap-b.standardizedGap).slice(0,3).map(({standardizedGap,...item}) => item);
       player.trade_offs = [...comparisons].sort((a,b) => b.standardizedGap-a.standardizedGap).slice(0,2).map(({standardizedGap,...item}) => item);
-      player.similarity = Number((100 / (1 + distance)).toFixed(1));
+      player.similarity = similarityScore(target, player, deviations);
       player.position_group = group;
     }
     candidates.sort((a,b) => b.similarity - a.similarity);
     target.position_group = group;
-    return { target, position_group:group, similar_players:candidates.slice(0, limit), methodology:"Standardized per-90 distance within the player's position family." };
+    return { target, position_group:group, similar_players:candidates.slice(0, limit), methodology:"Standardized per-90 distance using the shared league-wide 450-minute benchmark; candidates are restricted to the player's position family." };
   }
 
   function replacementPlayers(data, playerId, params) {
@@ -98,11 +107,7 @@
     const uniqueIds = [...new Set(playerIds)];
     const pool = data.scoutingBase.map(clone);
     const benchmark = pool.filter(player => player.minutes >= 450);
-    const means = Object.fromEntries(metrics.map(metric => [metric, benchmark.reduce((sum,player) => sum + player.per_90[metric], 0) / benchmark.length]));
-    const deviations = Object.fromEntries(metrics.map(metric => {
-      const variance = benchmark.reduce((sum,player) => sum + Math.pow(player.per_90[metric] - means[metric], 2), 0) / benchmark.length;
-      return [metric, Math.sqrt(variance) || 1];
-    }));
+    const deviations = similarityDeviations(data);
     const players = uniqueIds.map(id => pool.find(player => player.player_id === id)).filter(Boolean);
     const metricLeaders = Object.fromEntries(metrics.map(metric => {
       const value = Math.max(...players.map(player => player.per_90[metric]));
@@ -111,11 +116,7 @@
     const similarities = [];
     for (let i=0; i<players.length; i++) {
       for (let j=i+1; j<players.length; j++) {
-        const distance = Math.sqrt(metrics.reduce((sum,metric) => {
-          const difference = (players[i].per_90[metric] - players[j].per_90[metric]) / deviations[metric];
-          return sum + difference * difference;
-        }, 0) / metrics.length);
-        similarities.push({player_a_id:players[i].player_id, player_b_id:players[j].player_id, similarity:Number((100/(1+distance)).toFixed(1))});
+        similarities.push({player_a_id:players[i].player_id, player_b_id:players[j].player_id, similarity:similarityScore(players[i], players[j], deviations)});
       }
     }
     similarities.sort((a,b) => b.similarity - a.similarity);

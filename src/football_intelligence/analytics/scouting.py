@@ -1,6 +1,6 @@
 import math
 from collections import Counter, defaultdict
-from statistics import fmean, pstdev
+from statistics import pstdev
 from typing import Any
 
 from sqlalchemy import select
@@ -18,7 +18,38 @@ VECTOR_METRICS = (
     "tackles",
     "interceptions",
 )
+SIMILARITY_BENCHMARK_MINUTES = 450
 _POSITION_CACHE: dict[tuple[int, int], dict[int, str]] = {}
+
+
+def _similarity_deviations(pool: list[dict[str, Any]]) -> dict[str, float]:
+    """Return the shared league-wide scale used by every similarity surface."""
+    benchmark = [
+        record for record in pool if record["minutes"] >= SIMILARITY_BENCHMARK_MINUTES
+    ] or pool
+    return {
+        metric: pstdev(record["per_90"][metric] for record in benchmark) or 1.0
+        for metric in VECTOR_METRICS
+    }
+
+
+def _similarity_score(
+    first: dict[str, Any],
+    second: dict[str, Any],
+    deviations: dict[str, float],
+) -> float:
+    distance = math.sqrt(
+        sum(
+            (
+                (first["per_90"][metric] - second["per_90"][metric])
+                / deviations[metric]
+            )
+            ** 2
+            for metric in VECTOR_METRICS
+        )
+        / len(VECTOR_METRICS)
+    )
+    return round(100 / (1 + distance), 1)
 
 
 def position_group(position: str) -> str:
@@ -89,29 +120,10 @@ def similar_player_records(
         and record["minutes"] >= min_minutes
         and position_group(record["position"]) == target_group
     ]
-    comparison = candidates + [target]
-    means = {
-        metric: fmean(record["per_90"][metric] for record in comparison)
-        for metric in VECTOR_METRICS
-    }
-    deviations = {
-        metric: pstdev(record["per_90"][metric] for record in comparison) or 1.0
-        for metric in VECTOR_METRICS
-    }
+    deviations = _similarity_deviations(pool)
     for candidate in candidates:
-        distance = math.sqrt(
-            sum(
-                (
-                    (candidate["per_90"][metric] - means[metric]) / deviations[metric]
-                    - (target["per_90"][metric] - means[metric]) / deviations[metric]
-                )
-                ** 2
-                for metric in VECTOR_METRICS
-            )
-            / len(VECTOR_METRICS)
-        )
         matches, trade_offs = _metric_explanation(target, candidate, deviations)
-        candidate["similarity"] = round(100 / (1 + distance), 1)
+        candidate["similarity"] = _similarity_score(target, candidate, deviations)
         candidate["match_reasons"] = matches
         candidate["trade_offs"] = trade_offs
         candidate["position_group"] = target_group
@@ -121,7 +133,10 @@ def similar_player_records(
         "target": target,
         "position_group": target_group,
         "similar_players": candidates[:limit],
-        "methodology": "Standardized per-90 distance within the player's position family.",
+        "methodology": (
+            "Standardized per-90 distance using the shared league-wide 450-minute "
+            "benchmark; candidates are restricted to the player's position family."
+        ),
     }
 
 
@@ -179,14 +194,10 @@ def compare_player_records(pool: list[dict[str, Any]], player_ids: list[int]) ->
     if missing:
         raise LookupError(f"Players not found in this competition-season: {missing}")
 
-    benchmark = [record for record in pool if record["minutes"] >= 450] or pool
-    means = {
-        metric: fmean(record["per_90"][metric] for record in benchmark) for metric in VECTOR_METRICS
-    }
-    deviations = {
-        metric: pstdev(record["per_90"][metric] for record in benchmark) or 1.0
-        for metric in VECTOR_METRICS
-    }
+    benchmark = [
+        record for record in pool if record["minutes"] >= SIMILARITY_BENCHMARK_MINUTES
+    ] or pool
+    deviations = _similarity_deviations(pool)
 
     players = []
     for player_id in unique_ids:
@@ -208,22 +219,11 @@ def compare_player_records(pool: list[dict[str, Any]], player_ids: list[int]) ->
     similarities = []
     for index, first in enumerate(players):
         for second in players[index + 1 :]:
-            distance = math.sqrt(
-                sum(
-                    (
-                        (first["per_90"][metric] - means[metric]) / deviations[metric]
-                        - (second["per_90"][metric] - means[metric]) / deviations[metric]
-                    )
-                    ** 2
-                    for metric in VECTOR_METRICS
-                )
-                / len(VECTOR_METRICS)
-            )
             similarities.append(
                 {
                     "player_a_id": first["player_id"],
                     "player_b_id": second["player_id"],
-                    "similarity": round(100 / (1 + distance), 1),
+                    "similarity": _similarity_score(first, second, deviations),
                 }
             )
 
@@ -232,7 +232,7 @@ def compare_player_records(pool: list[dict[str, Any]], player_ids: list[int]) ->
         "metric_leaders": metric_leaders,
         "similarities": sorted(similarities, key=lambda item: item["similarity"], reverse=True),
         "benchmark": {
-            "minimum_minutes": 450,
+            "minimum_minutes": SIMILARITY_BENCHMARK_MINUTES,
             "players": len(benchmark),
             "method": "Direct season totals and per-90 rates",
             "visual_scale": "Bars are scaled only against the selected players.",
