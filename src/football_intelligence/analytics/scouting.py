@@ -21,10 +21,6 @@ VECTOR_METRICS = (
 _POSITION_CACHE: dict[tuple[int, int], dict[int, str]] = {}
 
 
-def _percentile(value: float, values: list[float]) -> int:
-    return round(100 * sum(item <= value for item in values) / len(values))
-
-
 def position_group(position: str) -> str:
     """Map provider position labels into useful recruitment cohorts."""
     normalized = position.casefold()
@@ -129,8 +125,51 @@ def similar_player_records(
     }
 
 
+def replacement_player_records(
+    pool: list[dict[str, Any]],
+    player_id: int,
+    *,
+    min_minutes: float = 450,
+    limit: int = 10,
+    exclude_same_team: bool = False,
+    min_similarity: float = 0,
+) -> dict[str, Any] | None:
+    """Build a decision-ready shortlist from the position-aware similarity model."""
+    result = similar_player_records(
+        pool,
+        player_id,
+        min_minutes=min_minutes,
+        limit=len(pool),
+    )
+    if result is None:
+        return None
+
+    target = result["target"]
+    candidates = [
+        candidate
+        for candidate in result["similar_players"]
+        if candidate["similarity"] >= min_similarity
+        and (not exclude_same_team or candidate["team_id"] != target["team_id"])
+    ]
+    for candidate in candidates:
+        candidate["minutes_difference"] = round(candidate["minutes"] - target["minutes"], 1)
+
+    return {
+        "target": target,
+        "position_group": result["position_group"],
+        "replacement_candidates": candidates[:limit],
+        "screening": {
+            "minimum_minutes": min_minutes,
+            "minimum_similarity": min_similarity,
+            "same_team_excluded": exclude_same_team,
+            "eligible_candidates": len(candidates),
+        },
+        "methodology": result["methodology"],
+    }
+
+
 def compare_player_records(pool: list[dict[str, Any]], player_ids: list[int]) -> dict[str, Any]:
-    """Build a league-normalized comparison for two to five selected players."""
+    """Build a direct-stat comparison for two to five selected players."""
     unique_ids = list(dict.fromkeys(player_ids))
     if not 2 <= len(unique_ids) <= 5:
         raise ValueError("Select between 2 and 5 different players")
@@ -141,10 +180,6 @@ def compare_player_records(pool: list[dict[str, Any]], player_ids: list[int]) ->
         raise LookupError(f"Players not found in this competition-season: {missing}")
 
     benchmark = [record for record in pool if record["minutes"] >= 450] or pool
-    distributions = {
-        metric: sorted(record["per_90"][metric] for record in benchmark)
-        for metric in VECTOR_METRICS
-    }
     means = {
         metric: fmean(record["per_90"][metric] for record in benchmark) for metric in VECTOR_METRICS
     }
@@ -156,15 +191,19 @@ def compare_player_records(pool: list[dict[str, Any]], player_ids: list[int]) ->
     players = []
     for player_id in unique_ids:
         record = dict(by_id[player_id])
-        relative_profile = {
-            metric: _percentile(record["per_90"][metric], distributions[metric])
-            for metric in VECTOR_METRICS
-        }
-        ranked = sorted(VECTOR_METRICS, key=lambda metric: relative_profile[metric], reverse=True)
-        record["relative_profile"] = relative_profile
-        record["strengths"] = ranked[:3]
-        record["development_areas"] = ranked[-2:]
         players.append(record)
+
+    metric_leaders = {}
+    for metric in VECTOR_METRICS:
+        best_value = max(player["per_90"][metric] for player in players)
+        metric_leaders[metric] = {
+            "value": best_value,
+            "player_ids": [
+                player["player_id"]
+                for player in players
+                if player["per_90"][metric] == best_value
+            ],
+        }
 
     similarities = []
     for index, first in enumerate(players):
@@ -178,6 +217,7 @@ def compare_player_records(pool: list[dict[str, Any]], player_ids: list[int]) ->
                     ** 2
                     for metric in VECTOR_METRICS
                 )
+                / len(VECTOR_METRICS)
             )
             similarities.append(
                 {
@@ -189,11 +229,13 @@ def compare_player_records(pool: list[dict[str, Any]], player_ids: list[int]) ->
 
     return {
         "players": players,
+        "metric_leaders": metric_leaders,
         "similarities": sorted(similarities, key=lambda item: item["similarity"], reverse=True),
         "benchmark": {
             "minimum_minutes": 450,
             "players": len(benchmark),
-            "method": "League-relative per-90 profile",
+            "method": "Direct season totals and per-90 rates",
+            "visual_scale": "Bars are scaled only against the selected players.",
         },
     }
 
@@ -297,6 +339,28 @@ def similar_players(
         player_id,
         min_minutes=min_minutes,
         limit=limit,
+    )
+
+
+def replacement_players(
+    session: Session,
+    competition_id: int,
+    season_id: int,
+    player_id: int,
+    *,
+    min_minutes: float = 450,
+    limit: int = 10,
+    exclude_same_team: bool = False,
+    min_similarity: float = 0,
+) -> dict[str, Any] | None:
+    pool = scouting_pool(session, competition_id, season_id, min_minutes=0)
+    return replacement_player_records(
+        pool,
+        player_id,
+        min_minutes=min_minutes,
+        limit=limit,
+        exclude_same_team=exclude_same_team,
+        min_similarity=min_similarity,
     )
 
 

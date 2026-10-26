@@ -4,6 +4,7 @@ from sqlalchemy.orm import Session
 
 from football_intelligence.analytics.scouting import (
     compare_players,
+    replacement_players,
     scouting_pool,
     similar_players,
 )
@@ -267,6 +268,31 @@ def player_similarity(
         settings.statsbomb_season_id,
         player_id,
         min_minutes=min_minutes,
+        limit=limit,
+    )
+    if result is None:
+        raise HTTPException(404, "Player not found in the current competition-season")
+    return result
+
+
+@router.get("/scouting/players/{player_id}/replacements")
+def player_replacements(
+    player_id: int,
+    min_minutes: float = Query(450, ge=0),
+    min_similarity: float = Query(0, ge=0, le=100),
+    exclude_same_team: bool = False,
+    limit: int = Query(10, ge=1, le=50),
+    db: Session = Depends(get_db),
+    settings: Settings = Depends(get_settings),
+) -> dict:
+    result = replacement_players(
+        db,
+        settings.statsbomb_competition_id,
+        settings.statsbomb_season_id,
+        player_id,
+        min_minutes=min_minutes,
+        min_similarity=min_similarity,
+        exclude_same_team=exclude_same_team,
         limit=limit,
     )
     if result is None:

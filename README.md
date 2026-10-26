@@ -20,7 +20,7 @@ V1 delivers:
 - a responsive analyst dashboard with overview, match, team, player, scouting, and
   multi-player comparison views;
 - season totals, normalized per-90 output, positional filtering, and an explainable
-  player similarity explorer;
+  player replacement finder with shortlist-to-comparison workflow;
 - source-to-mart validation with a strict full-season readiness check;
 - dbt-style SQL models and data-quality tests for teams that prefer dbt.
 
@@ -123,6 +123,7 @@ only to make the portfolio demo fast, free to host, and resilient for reviewers.
 - `GET /api/v1/leaderboards/players?metric=goals`
 - `GET /api/v1/scouting/players?position=Centre%20Back&min_minutes=900`
 - `GET /api/v1/scouting/players/{player_id}/similar?min_minutes=900`
+- `GET /api/v1/scouting/players/{player_id}/replacements?min_minutes=900&exclude_same_team=true`
 - `GET /api/v1/scouting/compare?player_ids=...&player_ids=...`
 
 Pagination is bounded to protect the API. Interactive request and response schemas are
@@ -134,12 +135,13 @@ available in the generated OpenAPI documentation at `/docs`.
 - **Match Analysis:** searchable fixtures, team comparison, xG, shot map, and player output.
 - **Team Analysis:** season production, xG, and possession profiles.
 - **Player Analysis:** totals, per-90 statistics, workload, and match logs.
-- **Scouting:** minimum-minute qualification, positional filtering, season totals,
-  normalized per-90 output, and explainable replacement shortlists. Each position-aware
-  candidate includes its closest statistical traits and key trade-offs.
-- **Player Comparison:** select two to five players for side-by-side totals and per-90
-  output, a league-relative radar, statistical strengths and development areas, pairwise
-  similarity, and a downloadable CSV recruitment report.
+- **Replacement Finder:** choose a reference player, apply workload and same-club screening,
+  review ranked position-aware candidates, understand matching traits and trade-offs, build
+  a shortlist, and send it directly into comparison.
+- **Advanced Player Comparison:** select two to five players for workload cards, direct
+  per-90 bar comparisons, side-by-side totals and rates, selected-player metric leaders,
+  pairwise similarity, and a downloadable CSV recruitment report. Visuals show actual
+  values rather than league percentiles.
 
 The scouting workspace is a screening tool, not an objective player valuation. The first
 similarity version uses the eight reliable V1 season metrics and position-family cohorts.

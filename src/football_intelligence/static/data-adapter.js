@@ -64,35 +64,62 @@
     return { target, position_group:group, similar_players:candidates.slice(0, limit), methodology:"Standardized per-90 distance within the player's position family." };
   }
 
+  function replacementPlayers(data, playerId, params) {
+    const source = similarPlayers(data, playerId, new URLSearchParams({
+      min_minutes: params.get('min_minutes') || '450',
+      limit: String(data.scoutingBase.length)
+    }));
+    if (!source) return undefined;
+    const minSimilarity = Number(params.get('min_similarity') || 0);
+    const excludeSameTeam = params.get('exclude_same_team') === 'true';
+    const limit = Number(params.get('limit') || 10);
+    const candidates = source.similar_players.filter(player =>
+      player.similarity >= minSimilarity &&
+      (!excludeSameTeam || player.team_id !== source.target.team_id)
+    );
+    for (const player of candidates) {
+      player.minutes_difference = Number((player.minutes - source.target.minutes).toFixed(1));
+    }
+    return {
+      target: source.target,
+      position_group: source.position_group,
+      replacement_candidates: candidates.slice(0, limit),
+      screening: {
+        minimum_minutes: Number(params.get('min_minutes') || 450),
+        minimum_similarity: minSimilarity,
+        same_team_excluded: excludeSameTeam,
+        eligible_candidates: candidates.length
+      },
+      methodology: source.methodology
+    };
+  }
+
   function comparePlayers(data, playerIds) {
     const uniqueIds = [...new Set(playerIds)];
     const pool = data.scoutingBase.map(clone);
     const benchmark = pool.filter(player => player.minutes >= 450);
-    const distributions = Object.fromEntries(metrics.map(metric => [metric, benchmark.map(player => player.per_90[metric]).sort((a,b) => a-b)]));
     const means = Object.fromEntries(metrics.map(metric => [metric, benchmark.reduce((sum,player) => sum + player.per_90[metric], 0) / benchmark.length]));
     const deviations = Object.fromEntries(metrics.map(metric => {
       const variance = benchmark.reduce((sum,player) => sum + Math.pow(player.per_90[metric] - means[metric], 2), 0) / benchmark.length;
       return [metric, Math.sqrt(variance) || 1];
     }));
-    const players = uniqueIds.map(id => pool.find(player => player.player_id === id)).filter(Boolean).map(player => {
-      player.relative_profile = Object.fromEntries(metrics.map(metric => [metric, Math.round(100 * distributions[metric].filter(value => value <= player.per_90[metric]).length / distributions[metric].length)]));
-      const ranked = [...metrics].sort((a,b) => player.relative_profile[b] - player.relative_profile[a]);
-      player.strengths = ranked.slice(0,3);
-      player.development_areas = ranked.slice(-2);
-      return player;
-    });
+    const players = uniqueIds.map(id => pool.find(player => player.player_id === id)).filter(Boolean);
+    const metricLeaders = Object.fromEntries(metrics.map(metric => {
+      const value = Math.max(...players.map(player => player.per_90[metric]));
+      return [metric, {value, player_ids:players.filter(player => player.per_90[metric] === value).map(player => player.player_id)}];
+    }));
     const similarities = [];
     for (let i=0; i<players.length; i++) {
       for (let j=i+1; j<players.length; j++) {
         const distance = Math.sqrt(metrics.reduce((sum,metric) => {
           const difference = (players[i].per_90[metric] - players[j].per_90[metric]) / deviations[metric];
           return sum + difference * difference;
-        }, 0));
+        }, 0) / metrics.length);
         similarities.push({player_a_id:players[i].player_id, player_b_id:players[j].player_id, similarity:Number((100/(1+distance)).toFixed(1))});
       }
     }
     similarities.sort((a,b) => b.similarity - a.similarity);
-    return {players, similarities, benchmark:{minimum_minutes:450, players:benchmark.length, method:'League-relative per-90 profile'}};
+    return {players, metric_leaders:metricLeaders, similarities, benchmark:{minimum_minutes:450, players:benchmark.length, method:'Direct season totals and per-90 rates', visual_scale:'Bars are scaled only against the selected players.'}};
   }
 
   window.portfolioApi = async function (path) {
@@ -120,6 +147,8 @@
     if (match) return clone(data.matchDetails[match[1]]);
     let player = pathname.match(/^\/api\/v1\/scouting\/players\/(\d+)\/similar$/);
     if (player) return similarPlayers(data, Number(player[1]), url.searchParams);
+    player = pathname.match(/^\/api\/v1\/scouting\/players\/(\d+)\/replacements$/);
+    if (player) return replacementPlayers(data, Number(player[1]), url.searchParams);
     player = pathname.match(/^\/api\/v1\/players\/(\d+)\/matches$/);
     if (player) return clone(data.playerLogs[player[1]] || []).slice(0, Number(url.searchParams.get('limit') || 38));
     player = pathname.match(/^\/api\/v1\/players\/(\d+)$/);

@@ -6,7 +6,7 @@
   <meta name="description" content="Premier League match, player, team and scouting intelligence.">
   <title>Touchline Intelligence</title>
   <link rel="icon" href="./assets/favicon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="./assets/styles.css?v=6">
+  <link rel="stylesheet" href="./assets/styles.css?v=7">
 </head>
 <body>
   <div class="app-shell">
@@ -20,7 +20,7 @@
         <button class="nav-item" data-page="matches"><span>02</span>Matches</button>
         <button class="nav-item" data-page="teams"><span>03</span>Teams</button>
         <button class="nav-item" data-page="players"><span>04</span>Players</button>
-        <button class="nav-item" data-page="scouting"><span>05</span>Scouting</button>
+        <button class="nav-item" data-page="scouting"><span>05</span>Replacements</button>
         <button class="nav-item" data-page="compare"><span>06</span>Compare</button>
       </nav>
       <div class="source-card">
@@ -83,18 +83,19 @@
       </section>
 
       <section class="page" id="page-scouting">
-        <div class="intro-row"><div><p class="section-kicker">TRANSFER INTELLIGENCE</p><h2>Player similarity explorer</h2></div><p class="lede">Find statistically similar players and understand the evidence behind every match.</p></div>
+        <div class="intro-row"><div><p class="section-kicker">TRANSFER INTELLIGENCE</p><h2>Player replacement finder</h2></div><p class="lede">Choose a reference player, screen comparable candidates and send the strongest options into a direct comparison.</p></div>
         <div class="toolbar filters scouting-controls">
           <label>Minimum minutes<input id="scout-minutes" type="number" min="0" step="90" value="450"></label>
-          <label>Player<input id="scout-player" type="search" placeholder="e.g. Harry Kane" aria-label="Search scouting players"></label>
+          <label>Reference player<input id="scout-player" type="search" placeholder="e.g. Harry Kane" aria-label="Search scouting players"></label>
           <label>Position<input id="scout-position" type="search" placeholder="e.g. Centre Back"></label>
+          <label class="check-control"><input id="scout-exclude-club" type="checkbox"><span>Exclude current club</span></label>
           <button class="primary-button" id="run-scout">Run search</button>
         </div>
-        <div class="master-detail"><div class="data-list" id="scout-list"></div><aside class="detail-panel" id="scout-detail"><div class="empty-state"><span class="empty-glyph">◇</span><h3>Select a reference player</h3><p>Choose a player to generate an explainable similarity shortlist.</p></div></aside></div>
+        <div class="master-detail"><div class="data-list" id="scout-list"></div><aside class="detail-panel" id="scout-detail"><div class="empty-state"><span class="empty-glyph">◇</span><h3>Select a reference player</h3><p>Choose a player to generate and compare an explainable replacement shortlist.</p></div></aside></div>
       </section>
 
       <section class="page" id="page-compare">
-        <div class="intro-row"><div><p class="section-kicker">RECRUITMENT MEETING</p><h2>Player comparison</h2></div><p class="lede">Compare two to five players using season output, league-relative profiles and stylistic similarity.</p></div>
+        <div class="intro-row"><div><p class="section-kicker">RECRUITMENT MEETING</p><h2>Advanced player comparison</h2></div><p class="lede">Compare two to five players with actual season totals, per-90 rates, workload and visual metric differences.</p></div>
         <article class="panel compare-builder">
           <div class="compare-add-row">
             <label class="compare-search">Find a player<input id="compare-search" type="search" placeholder="Search by player or club" autocomplete="off" aria-label="Find a player to compare"></label>
@@ -104,12 +105,12 @@
           <div class="compare-selection" id="compare-selection"></div>
           <p class="compare-guidance" id="compare-guidance">Select at least two players. You can compare up to five.</p>
         </article>
-        <div id="comparison-content"><div class="empty-state comparison-empty"><span class="empty-glyph">⇄</span><h3>Build a comparison</h3><p>Add two to five players to inspect their production, profile shape and similarity.</p></div></div>
+        <div id="comparison-content"><div class="empty-state comparison-empty"><span class="empty-glyph">⇄</span><h3>Build a comparison</h3><p>Add two to five players to inspect their production, workload, metric differences and similarity.</p></div></div>
       </section>
     </main>
   </div>
   <script src="./assets/data.js"></script>
-  <script src="./assets/data-adapter.js?v=5"></script>
-  <script src="./assets/app.js?v=6" defer></script>
+  <script src="./assets/data-adapter.js?v=6"></script>
+  <script src="./assets/app.js?v=7" defer></script>
 </body>
 </html>
