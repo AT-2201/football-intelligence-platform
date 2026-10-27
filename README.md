@@ -18,7 +18,8 @@ V1 delivers:
 - derived team-match, player-match, team-season, and player-season statistics;
 - a FastAPI foundation for competition, match, team, and player analytics;
 - a responsive analyst dashboard with overview, match, team, player, scouting, and
-  multi-player comparison views;
+  multi-player comparison views, plain-language labels, accessible type sizes, and
+  page-specific visual hierarchy;
 - season totals, normalized per-90 output, positional filtering, and an explainable
   player replacement finder with shortlist-to-comparison workflow;
 - source-to-mart validation with a strict full-season readiness check;
