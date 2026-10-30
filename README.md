@@ -17,13 +17,13 @@ V1 delivers:
 - a normalized PostgreSQL-ready model with the source JSON retained for traceability;
 - derived team-match, player-match, team-season, and player-season statistics;
 - a FastAPI foundation for competition, match, team, and player analytics;
-- a responsive analyst dashboard with overview, match, team, player, scouting, and
+- a responsive analyst dashboard with overview, match, team, player, squad-planning, and
   multi-player comparison views, plain-language labels, accessible type sizes, and
   page-specific visual hierarchy;
 - season totals, normalized per-90 output, positional filtering, and an explainable
-  player replacement finder with shortlist-to-comparison workflow;
-- a squad-needs recommendation engine for replacement, depth, and performance-improvement
-  scenarios, with transparent evidence and trade-offs for every candidate;
+  squad replacement planner with shortlist-to-comparison workflow;
+- player-specific replacement recommendations with transparent evidence and trade-offs
+  for every candidate;
 - source-to-mart validation with a strict full-season readiness check;
 - dbt-style SQL models and data-quality tests for teams that prefer dbt.
 
@@ -128,7 +128,7 @@ only to make the portfolio demo fast, free to host, and resilient for reviewers.
 - `GET /api/v1/scouting/players/{player_id}/similar?min_minutes=900`
 - `GET /api/v1/scouting/players/{player_id}/replacements?min_minutes=900&exclude_same_team=true`
 - `GET /api/v1/scouting/teams/{team_id}/needs`
-- `GET /api/v1/scouting/recommendations?team_id=...&scenario=add_depth&need=pressing`
+- `GET /api/v1/scouting/recommendations?team_id=...&scenario=replace_player&player_id=...&need=balanced_profile`
 - `GET /api/v1/scouting/compare?player_ids=...&player_ids=...`
 
 Pagination is bounded to protect the API. Interactive request and response schemas are
@@ -140,13 +140,10 @@ available in the generated OpenAPI documentation at `/docs`.
 - **Match Analysis:** searchable fixtures, team comparison, xG, shot map, and player output.
 - **Team Analysis:** season production, xG, and possession profiles.
 - **Player Analysis:** totals, per-90 statistics, workload, and match logs.
-- **Replacement Finder:** choose a reference player, apply workload and same-club screening,
-  review ranked position-aware candidates, understand matching traits and trade-offs, build
-  a shortlist, and send it directly into comparison.
-- **Squad Needs & Recommendations:** diagnose position coverage and concentration risk, then
-  build squad-aware shortlists for replacing a player, adding depth, or improving goal threat,
-  passing involvement, carrying, pressing, or defensive activity. Each recommendation exposes
-  profile match, evidence confidence, supporting statistics, and trade-offs.
+- **Squad Replacement Planner:** choose an unavailable or outgoing player, set the replacement
+  priority and evidence threshold, then review a position-aware shortlist from outside the
+  current club. Each recommendation exposes profile match, evidence confidence, supporting
+  statistics, trade-offs, and a direct handoff into player comparison.
 - **Advanced Player Comparison:** select two to five players for workload cards, direct
   per-90 bar comparisons, side-by-side totals and rates, selected-player metric leaders,
   pairwise similarity, and a downloadable CSV recruitment report. Visuals show actual

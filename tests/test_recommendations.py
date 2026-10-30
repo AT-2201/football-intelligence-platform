@@ -75,3 +75,17 @@ def test_recommendations_are_squad_aware_and_explainable() -> None:
     assert all(candidate["team_id"] != 10 for candidate in result["recommendations"])
     assert result["recommendations"][0]["why_recommended"]
     assert "_ranking_score" not in result["recommendations"][0]
+
+
+def test_balanced_profile_is_available_for_replacement_briefs() -> None:
+    result = recommendation_records(
+        sample_pool(),
+        10,
+        scenario="replace_player",
+        player_id=1,
+        need="balanced_profile",
+    )
+
+    assert result is not None
+    assert result["need"]["label"] == "Balanced playing profile"
+    assert result["reference_player"]["player_id"] == 1

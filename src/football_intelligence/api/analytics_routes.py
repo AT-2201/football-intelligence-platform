@@ -276,10 +276,10 @@ def team_squad_needs(
 @router.get("/scouting/recommendations")
 def player_recommendations(
     team_id: int,
-    scenario: str = Query("add_depth"),
+    scenario: str = Query("replace_player"),
     player_id: int | None = None,
     position: str | None = None,
-    need: str = Query("goal_threat"),
+    need: str = Query("balanced_profile"),
     min_minutes: float = Query(450, ge=0),
     limit: int = Query(8, ge=1, le=25),
     db: Session = Depends(get_db),

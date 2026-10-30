@@ -29,6 +29,10 @@ POSITION_GROUPS = (
     "Forward",
 )
 NEED_PROFILES = {
+    "balanced_profile": {
+        "label": "Balanced playing profile",
+        "metrics": VECTOR_METRICS,
+    },
     "goal_threat": {
         "label": "More goal threat",
         "metrics": ("goals", "xg", "shots"),
@@ -307,10 +311,10 @@ def recommendation_records(
     pool: list[dict[str, Any]],
     team_id: int,
     *,
-    scenario: str = "add_depth",
+    scenario: str = "replace_player",
     player_id: int | None = None,
     position: str | None = None,
-    need: str = "goal_threat",
+    need: str = "balanced_profile",
     min_minutes: float = 450,
     limit: int = 8,
 ) -> dict[str, Any] | None:
@@ -458,8 +462,9 @@ def recommendation_records(
             "current_club_excluded": True,
         },
         "methodology": (
-            "Recommendations combine position-group profile match, the selected squad "
-            "need and minutes-based evidence. Rankings are screening guidance, not transfer value."
+            "Recommendations combine similarity to the selected player, the chosen "
+            "replacement priority and minutes-based evidence. Rankings are screening "
+            "guidance, not transfer value."
         ),
     }
 
@@ -673,10 +678,10 @@ def recommend_players(
     season_id: int,
     team_id: int,
     *,
-    scenario: str = "add_depth",
+    scenario: str = "replace_player",
     player_id: int | None = None,
     position: str | None = None,
-    need: str = "goal_threat",
+    need: str = "balanced_profile",
     min_minutes: float = 450,
     limit: int = 8,
 ) -> dict[str, Any] | None:

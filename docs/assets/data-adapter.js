@@ -2,6 +2,7 @@
   const metrics = ['goals', 'xg', 'shots', 'passes', 'carries', 'pressures', 'tackles', 'interceptions'];
   const positionGroups = ['Goalkeeper', 'Centre Back', 'Full Back', 'Defensive Midfielder', 'Central Midfielder', 'Wide Attacker', 'Forward'];
   const needProfiles = {
+    balanced_profile: {label:'Balanced playing profile', metrics},
     goal_threat: {label:'More goal threat', metrics:['goals','xg','shots']},
     passing_involvement: {label:'More passing involvement', metrics:['passes']},
     ball_carrying: {label:'More ball carrying', metrics:['carries']},
@@ -170,10 +171,10 @@
 
   function recommendPlayers(data, params) {
     const teamId = Number(params.get('team_id'));
-    const scenario = params.get('scenario') || 'add_depth';
+    const scenario = params.get('scenario') || 'replace_player';
     const playerId = Number(params.get('player_id')) || null;
     const requestedPosition = params.get('position');
-    const needKey = params.get('need') || 'goal_threat';
+    const needKey = params.get('need') || 'balanced_profile';
     const minMinutes = Number(params.get('min_minutes') || 450);
     const limit = Number(params.get('limit') || 8);
     const squad = squadNeeds(data,teamId);
@@ -201,7 +202,7 @@
       return {...candidate,position_group:selectedGroup,profile_match:Number(profileMatch.toFixed(1)),need_fit:band(needStrength),evidence_confidence:band(evidence,80,45),why_recommended:why,trade_offs:tradeOffs,_ranking_score:rankingScore};
     }).sort((a,b) => b._ranking_score-a._ranking_score);
     ranked.forEach(candidate => delete candidate._ranking_score);
-    return {team:{team_id:teamId,team_name:squad.team_name},scenario,position_group:selectedGroup,need:{key:needKey,...need},reference_player:target?safeClone(target):null,squad_reference:Object.fromEntries(metrics.map(metric => [metric,Number(reference[metric].toFixed(2))])),recommendations:ranked.slice(0,limit),screening:{minimum_minutes:minMinutes,eligible_candidates:ranked.length,current_club_excluded:true},methodology:'Recommendations combine position-group profile match, the selected squad need and minutes-based evidence. Rankings are screening guidance, not transfer value.'};
+    return {team:{team_id:teamId,team_name:squad.team_name},scenario,position_group:selectedGroup,need:{key:needKey,...need},reference_player:target?safeClone(target):null,squad_reference:Object.fromEntries(metrics.map(metric => [metric,Number(reference[metric].toFixed(2))])),recommendations:ranked.slice(0,limit),screening:{minimum_minutes:minMinutes,eligible_candidates:ranked.length,current_club_excluded:true},methodology:'Recommendations combine similarity to the selected player, the chosen replacement priority and minutes-based evidence. Rankings are screening guidance, not transfer value.'};
   }
 
   function safeClone(value) { return value ? clone(value) : value; }

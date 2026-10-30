@@ -1,5 +1,5 @@
 const state = { overview: null, matches: [], teams: [], players: [], scouts: [], selectedScoutId: null, replacementData: null, shortlistIds: [], recommendationTeams: [], recommendationPool: [], squadNeeds: null, recommendations: null, recommendationShortlistIds: [], comparePool: [], comparisonIds: [], comparison: null };
-const titles = { overview: 'Season overview', matches: 'Match reports', teams: 'Team profiles', players: 'Player profiles', scouting: 'Player replacement finder', recommendations: 'Squad recommendations', compare: 'Player comparison' };
+const titles = { overview: 'Season overview', matches: 'Match reports', teams: 'Team profiles', players: 'Player profiles', recommendations: 'Squad replacement planner', compare: 'Player comparison' };
 const comparisonMetrics = [
   ['attacking','goals','Goals',0], ['attacking','xg','xG',2], ['attacking','shots','Shots',0],
   ['possession','passes','Passes',0], ['possession','carries','Carries',0],
@@ -31,7 +31,6 @@ function navigate(page) {
   if (page === 'matches' && !state.matches.length) loadMatches();
   if (page === 'teams' && !state.teams.length) loadTeams();
   if (page === 'players' && !state.players.length) loadPlayers();
-  if (page === 'scouting' && !state.scouts.length) loadScouting();
   if (page === 'recommendations' && !state.recommendationPool.length) loadRecommendationWorkspace();
   if (page === 'compare' && !state.comparePool.length) loadComparisonWorkspace();
 }
@@ -152,7 +151,7 @@ function compareShortlist() {
 }
 
 async function loadRecommendationWorkspace() {
-  const needs=$('#squad-needs'); loading(needs);
+  const output=$('#recommendation-output'); loading(output);
   try {
     const [teams,pool]=await Promise.all([api('/api/v1/teams'),api('/api/v1/scouting/players?min_minutes=0&limit=1000')]);
     state.recommendationTeams=[...teams].sort((a,b)=>a.team_name.localeCompare(b.team_name));
@@ -161,62 +160,35 @@ async function loadRecommendationWorkspace() {
     const preferred=state.recommendationTeams.find(team=>team.team_name==='Leicester City')||state.recommendationTeams[0];
     if(preferred)$('#recommend-team').value=String(preferred.team_id);
     renderRecommendationPlayerOptions();
-    updateRecommendationScenario();
-    $('#recommend-position').value='Forward';
-    await loadSquadDiagnostic(true);
-  } catch(error) { needs.innerHTML=''; toast(error.message); }
+    await runRecommendations();
+  } catch(error) { output.innerHTML=''; toast(error.message); }
 }
 
 function renderRecommendationPlayerOptions() {
   const teamId=Number($('#recommend-team').value);
   const players=state.recommendationPool.filter(player=>player.team_id===teamId).sort((a,b)=>b.minutes-a.minutes);
   $('#recommend-player').innerHTML=players.map(player=>`<option value="${player.player_id}">${esc(player.player_name)} · ${esc(player.position)}</option>`).join('');
+  setDefaultReplacementPriority();
 }
 
-function updateRecommendationScenario() {
-  const scenario=$('#recommend-scenario').value;
-  $('.recommend-player-field').classList.toggle('hidden',scenario!=='replace_player');
-  $('.recommend-position-field').classList.toggle('hidden',scenario==='replace_player');
-}
-
-function defaultNeedForPosition(group) {
-  if(['Centre Back','Full Back','Defensive Midfielder','Goalkeeper'].includes(group))return 'defensive_activity';
-  if(['Central Midfielder','Wide Attacker'].includes(group))return 'passing_involvement';
-  return 'goal_threat';
-}
-
-async function loadSquadDiagnostic(runAfter=false) {
-  const teamId=Number($('#recommend-team').value);
-  if(!teamId)return;
-  const container=$('#squad-needs'); loading(container);
-  try {
-    state.squadNeeds=await api(`/api/v1/scouting/teams/${teamId}/needs`);
-    $('#squad-diagnostic-summary').textContent=`${state.squadNeeds.players} players with recorded minutes`;
-    container.innerHTML=state.squadNeeds.diagnostics.map(item=>`<button class="need-card need-${item.need_level.toLowerCase()}" type="button" data-need-position="${esc(item.position_group)}"><span class="need-level">${esc(item.need_level)} need</span><strong>${esc(item.position_group)}</strong><span>${item.core_players} established · ${fmt(item.total_minutes)} min</span><small>${esc(item.reason)}</small></button>`).join('');
-    $$('[data-need-position]').forEach(card=>card.onclick=()=>{
-      $('#recommend-scenario').value='add_depth';
-      updateRecommendationScenario();
-      $('#recommend-position').value=card.dataset.needPosition;
-      $('#recommend-need').value=defaultNeedForPosition(card.dataset.needPosition);
-      runRecommendations();
-    });
-    if(runAfter)await runRecommendations();
-  } catch(error) { container.innerHTML=''; toast(error.message); }
+function setDefaultReplacementPriority() {
+  const player=state.recommendationPool.find(item=>item.player_id===Number($('#recommend-player').value));
+  const position=(player?.position||'').toLowerCase();
+  if(position.includes('goalkeeper')||position.includes('back')||position.includes('defensive midfield'))$('#recommend-need').value='defensive_activity';
+  else if(position.includes('midfield'))$('#recommend-need').value='passing_involvement';
+  else if(position.includes('forward')||position.includes('wing'))$('#recommend-need').value='goal_threat';
+  else $('#recommend-need').value='balanced_profile';
 }
 
 async function runRecommendations() {
   const teamId=Number($('#recommend-team').value);
-  const scenario=$('#recommend-scenario').value;
   const playerId=Number($('#recommend-player').value)||0;
-  const position=$('#recommend-position').value;
   const need=$('#recommend-need').value;
   const minutes=Number($('#recommend-minutes').value)||0;
-  if(scenario==='replace_player'&&!playerId){toast('Select a player to replace.');return;}
+  if(!playerId){toast('Select a player to replace.');return;}
   const output=$('#recommendation-output'); loading(output);
   state.recommendationShortlistIds=[];
-  const params=new URLSearchParams({team_id:String(teamId),scenario,need,min_minutes:String(minutes),limit:'8'});
-  if(playerId)params.set('player_id',String(playerId));
-  if(position)params.set('position',position);
+  const params=new URLSearchParams({team_id:String(teamId),scenario:'replace_player',player_id:String(playerId),need,min_minutes:String(minutes),limit:'8'});
   try {
     state.recommendations=await api(`/api/v1/scouting/recommendations?${params}`);
     renderRecommendations();
@@ -227,14 +199,14 @@ function renderRecommendations() {
   const data=state.recommendations;
   const output=$('#recommendation-output');
   if(!data)return;
-  const scenarioLabel={replace_player:'Replacement plan',add_depth:'Depth plan',improve_need:'Improvement plan'}[data.scenario];
   const cards=data.recommendations.map((candidate,index)=>{
-    const reasons=candidate.why_recommended.map(item=>`<li><strong>${esc(metricLabel(item.metric))}</strong><span>${fmt(item.candidate,2)} per 90 · ${item.difference>=0?'+':''}${fmt(item.difference,2)} vs squad reference</span></li>`).join('');
+    const reasons=candidate.why_recommended.map(item=>`<li><strong>${esc(metricLabel(item.metric))}</strong><span>${fmt(item.candidate,2)} per 90 · ${item.difference>=0?'+':''}${fmt(item.difference,2)} vs selected player</span></li>`).join('');
+    const evidenceLabel=candidate.why_recommended.some(item=>item.difference>=0)?'Why recommended':'Closest profile evidence';
     const tradeoffs=candidate.trade_offs.map(item=>`<li>${esc(metricLabel(item.metric))}: ${fmt(Math.abs(item.difference),2)} fewer per 90</li>`).join('')||'<li>No major negative difference in the remaining model metrics.</li>';
-    return `<article class="recommendation-card" data-recommendation-card="${candidate.player_id}"><div class="recommendation-rank">${String(index+1).padStart(2,'0')}</div><div class="recommendation-main"><div class="recommendation-card-heading"><div><h4>${esc(candidate.player_name)}</h4><p>${esc(candidate.team_name)} · ${esc(candidate.position)} · ${fmt(candidate.minutes)} min</p></div><button class="secondary-button recommendation-shortlist" type="button" data-recommend-shortlist="${candidate.player_id}">Add to shortlist</button></div><div class="fit-badges"><span><small>Profile match</small><strong>${fmt(candidate.profile_match,1)}%</strong></span><span><small>Selected need</small><strong>${esc(candidate.need_fit)}</strong></span><span><small>Evidence</small><strong>${esc(candidate.evidence_confidence)}</strong></span></div><div class="recommendation-evidence"><div><span class="reason-label">Why recommended</span><ul>${reasons}</ul></div><div><span class="reason-label">Trade-offs to review</span><ul>${tradeoffs}</ul></div></div></div></article>`;
+    return `<article class="recommendation-card" data-recommendation-card="${candidate.player_id}"><div class="recommendation-rank">${String(index+1).padStart(2,'0')}</div><div class="recommendation-main"><div class="recommendation-card-heading"><div><h4>${esc(candidate.player_name)}</h4><p>${esc(candidate.team_name)} · ${esc(candidate.position)} · ${fmt(candidate.minutes)} min</p></div><button class="secondary-button recommendation-shortlist" type="button" data-recommend-shortlist="${candidate.player_id}">Add to shortlist</button></div><div class="fit-badges"><span><small>Profile match</small><strong>${fmt(candidate.profile_match,1)}%</strong></span><span><small>Selected priority</small><strong>${esc(candidate.need_fit)}</strong></span><span><small>Evidence</small><strong>${esc(candidate.evidence_confidence)}</strong></span></div><div class="recommendation-evidence"><div><span class="reason-label">${evidenceLabel}</span><ul>${reasons}</ul></div><div><span class="reason-label">Trade-offs to review</span><ul>${tradeoffs}</ul></div></div></div></article>`;
   }).join('');
-  const reference=data.reference_player?`Replacing ${esc(data.reference_player.player_name)}`:`${esc(data.position_group)} recruitment`;
-  output.innerHTML=`<div class="recommendation-output-heading"><div><p class="section-kicker">${esc(scenarioLabel)} · ${esc(data.need.label)}</p><h3>${reference} for ${esc(data.team.team_name)}</h3><p>${fmt(data.screening.eligible_candidates)} eligible players outside the current squad · minimum ${fmt(data.screening.minimum_minutes)} minutes</p></div><div class="recommendation-compare-box"><strong id="recommendation-shortlist-count">0 shortlisted</strong><button class="primary-button disabled" id="compare-recommendations" type="button" disabled>Compare shortlist</button></div></div><div class="recommendation-list">${cards||'<p class="muted">No candidates meet the current brief.</p>'}</div><p class="method-note"><strong>How this works:</strong> ${esc(data.methodology)} This open-data version does not include age, fees, contracts, injuries or physical testing.</p>`;
+  const reference=`Replacing ${esc(data.reference_player.player_name)}`;
+  output.innerHTML=`<div class="recommendation-output-heading"><div><p class="section-kicker">REPLACEMENT PLAN · ${esc(data.need.label)}</p><h3>${reference} for ${esc(data.team.team_name)}</h3><p>${fmt(data.screening.eligible_candidates)} eligible players outside the current squad · minimum ${fmt(data.screening.minimum_minutes)} minutes</p></div><div class="recommendation-compare-box"><strong id="recommendation-shortlist-count">0 shortlisted</strong><button class="primary-button disabled" id="compare-recommendations" type="button" disabled>Compare shortlist</button></div></div><div class="recommendation-list">${cards||'<p class="muted">No candidates meet the current brief.</p>'}</div><p class="method-note"><strong>How this works:</strong> ${esc(data.methodology)} This open-data version does not include age, fees, contracts, injuries or physical testing.</p>`;
   $$('[data-recommend-shortlist]').forEach(button=>button.onclick=()=>toggleRecommendationShortlist(Number(button.dataset.recommendShortlist)));
   $('#compare-recommendations').onclick=compareRecommendationShortlist;
 }
@@ -367,11 +339,8 @@ $$('.nav-item').forEach(item=>item.onclick=()=>navigate(item.dataset.page));
 $('#match-search').addEventListener('input',renderMatches);
 $('#player-search').addEventListener('input',renderPlayers);
 $('#player-minutes').addEventListener('change',loadPlayers);
-$('#run-scout').addEventListener('click',loadScouting);
-['#scout-player','#scout-position'].forEach(selector=>$(selector).addEventListener('keydown',event=>{if(event.key==='Enter')loadScouting();}));
-$('#scout-exclude-club').addEventListener('change',()=>{if(state.selectedScoutId)openScout(state.selectedScoutId);});
-$('#recommend-team').addEventListener('change',()=>{renderRecommendationPlayerOptions();state.recommendations=null;state.recommendationShortlistIds=[];loadSquadDiagnostic(false);});
-$('#recommend-scenario').addEventListener('change',updateRecommendationScenario);
+$('#recommend-team').addEventListener('change',()=>{renderRecommendationPlayerOptions();state.recommendations=null;state.recommendationShortlistIds=[];$('#recommendation-output').innerHTML='<div class="empty-state recommendation-empty"><span class="empty-glyph">⌁</span><h3>Build a replacement shortlist</h3><p>Select a player, adjust the priority if needed, then find replacements.</p></div>';});
+$('#recommend-player').addEventListener('change',setDefaultReplacementPriority);
 $('#run-recommendations').addEventListener('click',runRecommendations);
 $('#compare-search').addEventListener('input',renderComparisonSearch);
 $('#download-comparison').addEventListener('click',event=>{if(event.currentTarget.classList.contains('disabled'))event.preventDefault();});
