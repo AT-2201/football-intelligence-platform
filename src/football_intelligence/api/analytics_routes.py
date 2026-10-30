@@ -4,9 +4,11 @@ from sqlalchemy.orm import Session
 
 from football_intelligence.analytics.scouting import (
     compare_players,
+    recommend_players,
     replacement_players,
     scouting_pool,
     similar_players,
+    squad_needs,
 )
 from football_intelligence.config import Settings, get_settings
 from football_intelligence.db import get_db
@@ -252,6 +254,57 @@ def player_comparison(
         raise HTTPException(400, str(error)) from error
     except LookupError as error:
         raise HTTPException(404, str(error)) from error
+
+
+@router.get("/scouting/teams/{team_id}/needs")
+def team_squad_needs(
+    team_id: int,
+    db: Session = Depends(get_db),
+    settings: Settings = Depends(get_settings),
+) -> dict:
+    result = squad_needs(
+        db,
+        settings.statsbomb_competition_id,
+        settings.statsbomb_season_id,
+        team_id,
+    )
+    if result is None:
+        raise HTTPException(404, "Team not found in the current competition-season")
+    return result
+
+
+@router.get("/scouting/recommendations")
+def player_recommendations(
+    team_id: int,
+    scenario: str = Query("add_depth"),
+    player_id: int | None = None,
+    position: str | None = None,
+    need: str = Query("goal_threat"),
+    min_minutes: float = Query(450, ge=0),
+    limit: int = Query(8, ge=1, le=25),
+    db: Session = Depends(get_db),
+    settings: Settings = Depends(get_settings),
+) -> dict:
+    try:
+        result = recommend_players(
+            db,
+            settings.statsbomb_competition_id,
+            settings.statsbomb_season_id,
+            team_id,
+            scenario=scenario,
+            player_id=player_id,
+            position=position,
+            need=need,
+            min_minutes=min_minutes,
+            limit=limit,
+        )
+    except ValueError as error:
+        raise HTTPException(400, str(error)) from error
+    except LookupError as error:
+        raise HTTPException(404, str(error)) from error
+    if result is None:
+        raise HTTPException(404, "Team not found in the current competition-season")
+    return result
 
 
 @router.get("/scouting/players/{player_id}/similar")

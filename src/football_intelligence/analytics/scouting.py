@@ -19,6 +19,37 @@ VECTOR_METRICS = (
     "interceptions",
 )
 SIMILARITY_BENCHMARK_MINUTES = 450
+POSITION_GROUPS = (
+    "Goalkeeper",
+    "Centre Back",
+    "Full Back",
+    "Defensive Midfielder",
+    "Central Midfielder",
+    "Wide Attacker",
+    "Forward",
+)
+NEED_PROFILES = {
+    "goal_threat": {
+        "label": "More goal threat",
+        "metrics": ("goals", "xg", "shots"),
+    },
+    "passing_involvement": {
+        "label": "More passing involvement",
+        "metrics": ("passes",),
+    },
+    "ball_carrying": {
+        "label": "More ball carrying",
+        "metrics": ("carries",),
+    },
+    "pressing": {
+        "label": "More pressing intensity",
+        "metrics": ("pressures", "tackles"),
+    },
+    "defensive_activity": {
+        "label": "More defensive activity",
+        "metrics": ("tackles", "interceptions", "pressures"),
+    },
+}
 _POSITION_CACHE: dict[tuple[int, int], dict[int, str]] = {}
 
 
@@ -61,12 +92,16 @@ def position_group(position: str) -> str:
         return "Centre Back"
     if "back" in normalized:
         return "Full Back"
+    if (
+        "wing" in normalized
+        or "left midfield" in normalized
+        or "right midfield" in normalized
+    ):
+        return "Wide Attacker"
     if "defensive midfield" in normalized:
         return "Defensive Midfielder"
     if "midfield" in normalized:
         return "Central Midfielder"
-    if "wing" in normalized:
-        return "Wide Attacker"
     if "forward" in normalized:
         return "Forward"
     return "Other"
@@ -180,6 +215,252 @@ def replacement_player_records(
             "eligible_candidates": len(candidates),
         },
         "methodology": result["methodology"],
+    }
+
+
+def _weighted_profile(records: list[dict[str, Any]]) -> dict[str, float]:
+    total_minutes = sum(record["minutes"] for record in records) or 1.0
+    return {
+        metric: sum(record["per_90"][metric] * record["minutes"] for record in records)
+        / total_minutes
+        for metric in VECTOR_METRICS
+    }
+
+
+def _need_level(core_players: int, top_share: float) -> tuple[str, int]:
+    if core_players <= 1 or top_share >= 0.68:
+        return "High", 3
+    if core_players <= 2 or top_share >= 0.52:
+        return "Medium", 2
+    return "Covered", 1
+
+
+def squad_need_records(pool: list[dict[str, Any]], team_id: int) -> dict[str, Any] | None:
+    """Describe position coverage and concentration risk for one squad."""
+    team_players = [record for record in pool if record["team_id"] == team_id]
+    if not team_players:
+        return None
+
+    groups: dict[str, list[dict[str, Any]]] = defaultdict(list)
+    for record in team_players:
+        group = position_group(record["position"])
+        if group != "Other":
+            groups[group].append(record)
+
+    diagnostics = []
+    for group in POSITION_GROUPS:
+        players = sorted(groups.get(group, []), key=lambda item: item["minutes"], reverse=True)
+        total_minutes = sum(player["minutes"] for player in players)
+        core_players = sum(player["minutes"] >= SIMILARITY_BENCHMARK_MINUTES for player in players)
+        top_share = (players[0]["minutes"] / total_minutes) if total_minutes else 1.0
+        level, priority = _need_level(core_players, top_share)
+        if not players:
+            reason = "No player has this as a primary recorded position."
+        elif core_players <= 1:
+            reason = "Only one player reached the 450-minute evidence threshold."
+        elif top_share >= 0.68:
+            reason = (
+                f"{players[0]['player_name']} supplied "
+                f"{round(top_share * 100)}% of recorded minutes."
+            )
+        elif core_players <= 2:
+            reason = "Only two players reached the 450-minute evidence threshold."
+        else:
+            reason = f"{core_players} players supplied meaningful league minutes."
+        diagnostics.append(
+            {
+                "position_group": group,
+                "need_level": level,
+                "priority": priority,
+                "players": len(players),
+                "core_players": core_players,
+                "total_minutes": round(total_minutes, 1),
+                "top_player_share": round(top_share * 100, 1) if players else 100.0,
+                "top_player": players[0]["player_name"] if players else None,
+                "reason": reason,
+            }
+        )
+    diagnostics.sort(
+        key=lambda item: (item["priority"], item["top_player_share"]), reverse=True
+    )
+    return {
+        "team_id": team_id,
+        "team_name": team_players[0]["team_name"],
+        "players": len(team_players),
+        "diagnostics": diagnostics,
+        "methodology": (
+            "Coverage risk uses primary position, recorded league minutes, a 450-minute "
+            "evidence threshold and the share carried by the most-used player."
+        ),
+    }
+
+
+def _band(value: float, *, strong: float = 68, good: float = 52) -> str:
+    if value >= strong:
+        return "Strong"
+    if value >= good:
+        return "Good"
+    return "Developing"
+
+
+def recommendation_records(
+    pool: list[dict[str, Any]],
+    team_id: int,
+    *,
+    scenario: str = "add_depth",
+    player_id: int | None = None,
+    position: str | None = None,
+    need: str = "goal_threat",
+    min_minutes: float = 450,
+    limit: int = 8,
+) -> dict[str, Any] | None:
+    """Rank explainable squad-context recommendations for one club."""
+    squad = squad_need_records(pool, team_id)
+    if squad is None:
+        return None
+    if scenario not in {"replace_player", "add_depth", "improve_need"}:
+        raise ValueError("Scenario must be replace_player, add_depth or improve_need")
+    if need not in NEED_PROFILES:
+        raise ValueError(f"Unknown performance need: {need}")
+
+    team_players = [record for record in pool if record["team_id"] == team_id]
+    target = None
+    if scenario == "replace_player":
+        target = next(
+            (
+                record
+                for record in team_players
+                if record["player_id"] == player_id
+            ),
+            None,
+        )
+        if target is None:
+            raise LookupError("The selected player is not in this squad")
+        selected_group = position_group(target["position"])
+    else:
+        selected_group = position or squad["diagnostics"][0]["position_group"]
+        if selected_group not in POSITION_GROUPS:
+            raise ValueError(f"Unknown position group: {selected_group}")
+
+    team_group = [
+        record for record in team_players if position_group(record["position"]) == selected_group
+    ]
+    league_group = [
+        record
+        for record in pool
+        if position_group(record["position"]) == selected_group
+        and record["minutes"] >= SIMILARITY_BENCHMARK_MINUTES
+    ]
+    reference_records = [target] if target else team_group or league_group
+    reference_profile = _weighted_profile(reference_records)
+    deviations = _similarity_deviations(pool)
+    need_metrics = NEED_PROFILES[need]["metrics"]
+
+    candidates = [
+        dict(record)
+        for record in pool
+        if record["team_id"] != team_id
+        and record["minutes"] >= min_minutes
+        and position_group(record["position"]) == selected_group
+    ]
+    ranked = []
+    for candidate in candidates:
+        distance = math.sqrt(
+            sum(
+                (
+                    (candidate["per_90"][metric] - reference_profile[metric])
+                    / deviations[metric]
+                )
+                ** 2
+                for metric in VECTOR_METRICS
+            )
+            / len(VECTOR_METRICS)
+        )
+        profile_match = 100 / (1 + distance)
+        need_z = sum(
+            (candidate["per_90"][metric] - reference_profile[metric])
+            / deviations[metric]
+            for metric in need_metrics
+        ) / len(need_metrics)
+        need_strength = max(0.0, min(100.0, 50 + need_z * 18))
+        evidence = max(0.0, min(100.0, candidate["minutes"] / 2700 * 100))
+        if scenario == "replace_player":
+            ranking_score = profile_match * 0.68 + need_strength * 0.17 + evidence * 0.15
+        elif scenario == "improve_need":
+            ranking_score = profile_match * 0.30 + need_strength * 0.55 + evidence * 0.15
+        else:
+            ranking_score = profile_match * 0.50 + need_strength * 0.25 + evidence * 0.25
+
+        metric_evidence = sorted(
+            (
+                {
+                    "metric": metric,
+                    "candidate": round(candidate["per_90"][metric], 2),
+                    "squad_reference": round(reference_profile[metric], 2),
+                    "difference": round(
+                        candidate["per_90"][metric] - reference_profile[metric], 2
+                    ),
+                }
+                for metric in need_metrics
+            ),
+            key=lambda item: item["difference"],
+            reverse=True,
+        )
+        positive_evidence = [item for item in metric_evidence if item["difference"] >= 0]
+        trade_offs = sorted(
+            (
+                {
+                    "metric": metric,
+                    "candidate": round(candidate["per_90"][metric], 2),
+                    "squad_reference": round(reference_profile[metric], 2),
+                    "difference": round(
+                        candidate["per_90"][metric] - reference_profile[metric], 2
+                    ),
+                }
+                for metric in VECTOR_METRICS
+                if candidate["per_90"][metric] < reference_profile[metric]
+            ),
+            key=lambda item: (
+                item["metric"] not in need_metrics,
+                item["difference"] / deviations[item["metric"]],
+            ),
+        )[:2]
+        candidate.update(
+            {
+                "position_group": selected_group,
+                "profile_match": round(profile_match, 1),
+                "need_fit": _band(need_strength),
+                "evidence_confidence": _band(evidence, strong=80, good=45),
+                "why_recommended": (positive_evidence or metric_evidence[:1])[:3],
+                "trade_offs": trade_offs,
+                "_ranking_score": ranking_score,
+            }
+        )
+        ranked.append(candidate)
+
+    ranked.sort(key=lambda record: record["_ranking_score"], reverse=True)
+    for candidate in ranked:
+        candidate.pop("_ranking_score", None)
+
+    return {
+        "team": {"team_id": team_id, "team_name": squad["team_name"]},
+        "scenario": scenario,
+        "position_group": selected_group,
+        "need": {"key": need, **NEED_PROFILES[need]},
+        "reference_player": target,
+        "squad_reference": {
+            metric: round(value, 2) for metric, value in reference_profile.items()
+        },
+        "recommendations": ranked[:limit],
+        "screening": {
+            "minimum_minutes": min_minutes,
+            "eligible_candidates": len(ranked),
+            "current_club_excluded": True,
+        },
+        "methodology": (
+            "Recommendations combine position-group profile match, the selected squad "
+            "need and minutes-based evidence. Rankings are screening guidance, not transfer value."
+        ),
     }
 
 
@@ -372,4 +653,40 @@ def compare_players(
 ) -> dict[str, Any]:
     return compare_player_records(
         scouting_pool(session, competition_id, season_id, min_minutes=0), player_ids
+    )
+
+
+def squad_needs(
+    session: Session,
+    competition_id: int,
+    season_id: int,
+    team_id: int,
+) -> dict[str, Any] | None:
+    return squad_need_records(
+        scouting_pool(session, competition_id, season_id, min_minutes=0), team_id
+    )
+
+
+def recommend_players(
+    session: Session,
+    competition_id: int,
+    season_id: int,
+    team_id: int,
+    *,
+    scenario: str = "add_depth",
+    player_id: int | None = None,
+    position: str | None = None,
+    need: str = "goal_threat",
+    min_minutes: float = 450,
+    limit: int = 8,
+) -> dict[str, Any] | None:
+    return recommendation_records(
+        scouting_pool(session, competition_id, season_id, min_minutes=0),
+        team_id,
+        scenario=scenario,
+        player_id=player_id,
+        position=position,
+        need=need,
+        min_minutes=min_minutes,
+        limit=limit,
     )

@@ -6,7 +6,7 @@
   <meta name="description" content="Premier League match, player, team and scouting intelligence.">
   <title>Touchline Intelligence</title>
   <link rel="icon" href="./assets/favicon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="./assets/styles.css?v=8">
+  <link rel="stylesheet" href="./assets/styles.css?v=9">
 </head>
 <body>
   <div class="app-shell">
@@ -21,7 +21,8 @@
         <button class="nav-item" data-page="teams"><span>03</span>Teams</button>
         <button class="nav-item" data-page="players"><span>04</span>Players</button>
         <button class="nav-item" data-page="scouting"><span>05</span>Find replacements</button>
-        <button class="nav-item" data-page="compare"><span>06</span>Compare players</button>
+        <button class="nav-item" data-page="recommendations"><span>06</span>Squad planner</button>
+        <button class="nav-item" data-page="compare"><span>07</span>Compare players</button>
       </nav>
       <div class="source-card">
         <span class="source-label">OFFICIAL DATASET</span>
@@ -94,6 +95,30 @@
         <div class="master-detail"><div class="data-list" id="scout-list"></div><aside class="detail-panel" id="scout-detail"><div class="empty-state"><span class="empty-glyph">◇</span><h3>Select a reference player</h3><p>Choose a player to generate and compare an explainable replacement shortlist.</p></div></aside></div>
       </section>
 
+      <section class="page" id="page-recommendations">
+        <div class="intro-row"><div><p class="section-kicker">DECISION SUPPORT</p><h2>Squad needs & recommendations</h2></div><p class="lede">Diagnose roster coverage, define a recruitment scenario and receive an explainable shortlist built around the club’s current squad.</p></div>
+        <article class="panel recommendation-builder">
+          <div class="recommendation-builder-heading">
+            <div><p class="section-kicker">RECRUITMENT BRIEF</p><h3>What does the squad need?</h3></div>
+            <span class="scope-note">Sporting fit only · no fee, contract, age or injury data</span>
+          </div>
+          <div class="recommendation-controls">
+            <label>Club<select id="recommend-team" aria-label="Select club"></select></label>
+            <label>Scenario<select id="recommend-scenario" aria-label="Select recommendation scenario"><option value="add_depth">Add squad depth</option><option value="replace_player">Replace a player</option><option value="improve_need">Improve a performance area</option></select></label>
+            <label class="recommend-player-field hidden">Unavailable player<select id="recommend-player" aria-label="Select player to replace"></select></label>
+            <label class="recommend-position-field">Position group<select id="recommend-position" aria-label="Select position group"><option value="">Use highest squad need</option><option>Goalkeeper</option><option>Centre Back</option><option>Full Back</option><option>Defensive Midfielder</option><option>Central Midfielder</option><option>Wide Attacker</option><option>Forward</option></select></label>
+            <label>Performance need<select id="recommend-need" aria-label="Select performance need"><option value="goal_threat">More goal threat</option><option value="passing_involvement">More passing involvement</option><option value="ball_carrying">More ball carrying</option><option value="pressing">More pressing intensity</option><option value="defensive_activity">More defensive activity</option></select></label>
+            <label>Minimum minutes<input id="recommend-minutes" type="number" min="0" step="90" value="450"></label>
+            <button class="primary-button" id="run-recommendations" type="button">Build recommendations</button>
+          </div>
+        </article>
+        <section class="squad-diagnostic" aria-labelledby="squad-diagnostic-title">
+          <div class="section-heading-row"><div><p class="section-kicker">SQUAD DIAGNOSTIC</p><h3 id="squad-diagnostic-title">Position coverage</h3></div><span class="muted" id="squad-diagnostic-summary">Select a club to inspect its squad.</span></div>
+          <div class="need-card-grid" id="squad-needs"></div>
+        </section>
+        <section class="recommendation-output" id="recommendation-output"><div class="empty-state recommendation-empty"><span class="empty-glyph">⌁</span><h3>Build a recruitment brief</h3><p>Choose a club and scenario to generate squad-aware recommendations.</p></div></section>
+      </section>
+
       <section class="page" id="page-compare">
         <div class="intro-row"><div><p class="section-kicker">SHORTLIST REVIEW</p><h2>Compare player profiles</h2></div><p class="lede">Compare two to five players using actual season totals, per-90 rates, playing time and clearly labelled profile similarity.</p></div>
         <article class="panel compare-builder">
@@ -110,7 +135,7 @@
     </main>
   </div>
   <script src="./assets/data.js"></script>
-  <script src="./assets/data-adapter.js?v=7"></script>
-  <script src="./assets/app.js?v=8" defer></script>
+  <script src="./assets/data-adapter.js?v=8"></script>
+  <script src="./assets/app.js?v=9" defer></script>
 </body>
 </html>
