@@ -3,17 +3,17 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="description" content="Premier League match, player, team and scouting intelligence.">
+  <meta name="description" content="Premier League 2015/16 match, club, player and recruitment intelligence.">
   <title>Touchline Intelligence</title>
   <link rel="icon" href="./assets/favicon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="./assets/styles.css?v=10">
+  <link rel="stylesheet" href="./assets/styles.css?v=11">
 </head>
 <body>
   <div class="app-shell">
-    <aside class="sidebar">
+    <header class="site-header">
       <a class="brand" href="#overview" aria-label="Touchline Intelligence home">
         <span class="brand-mark">TI</span>
-        <span><strong>Touchline</strong><small>INTELLIGENCE</small></span>
+        <span><strong>Touchline</strong><small>Football intelligence</small></span>
       </a>
       <nav class="primary-nav" aria-label="Primary navigation">
         <button class="nav-item active" data-page="overview"><span>01</span>Overview</button>
@@ -24,12 +24,15 @@
         <button class="nav-item" data-page="compare"><span>06</span>Compare players</button>
       </nav>
       <div class="source-card">
-        <span class="source-label">OFFICIAL DATASET</span>
         <img class="source-logo" src="https://raw.githubusercontent.com/hudl/open-data/master/img/SB%20-%20Icon%20Lockup%20-%20Colour%20positive.png" alt="StatsBomb">
-        <strong>StatsBomb Open Data</strong>
-        <small>Premier League · 2015/16</small>
+        <span><strong>Open Data</strong><small>Premier League · 2015/16</small></span>
       </div>
-    </aside>
+    </header>
+
+    <div class="club-ribbon" aria-label="Premier League 2015/16 clubs">
+      <strong>2015/16 clubs</strong>
+      <div class="club-ribbon-list" id="club-ribbon"></div>
+    </div>
 
     <main class="workspace">
       <header class="topbar">
@@ -113,10 +116,15 @@
         </article>
         <div id="comparison-content"><div class="empty-state comparison-empty"><span class="empty-glyph">⇄</span><h3>Build a comparison</h3><p>Add two to five players to inspect their production, workload, metric differences and similarity.</p></div></div>
       </section>
+
+      <footer class="site-footer">
+        <span>Touchline Intelligence · Portfolio analytics project</span>
+        <span>Data: StatsBomb Open Data · Club crests are trademarks of their respective clubs and are shown for identification.</span>
+      </footer>
     </main>
   </div>
   <script src="./assets/data.js"></script>
   <script src="./assets/data-adapter.js?v=9"></script>
-  <script src="./assets/app.js?v=10" defer></script>
+  <script src="./assets/app.js?v=11" defer></script>
 </body>
 </html>

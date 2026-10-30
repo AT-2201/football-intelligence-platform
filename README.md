@@ -17,9 +17,9 @@ V1 delivers:
 - a normalized PostgreSQL-ready model with the source JSON retained for traceability;
 - derived team-match, player-match, team-season, and player-season statistics;
 - a FastAPI foundation for competition, match, team, and player analytics;
-- a responsive analyst dashboard with overview, match, team, player, squad-planning, and
-  multi-player comparison views, plain-language labels, accessible type sizes, and
-  page-specific visual hierarchy;
+- a responsive, competition-led analyst dashboard with horizontal navigation, all 20
+  Premier League 2015/16 club crests, overview, match, team, player, squad-planning, and
+  multi-player comparison views;
 - season totals, normalized per-90 output, positional filtering, and an explainable
   squad replacement planner with shortlist-to-comparison workflow;
 - player-specific replacement recommendations with transparent evidence and trade-offs
@@ -107,6 +107,9 @@ python scripts/export_portfolio.py
 The generated `docs/` directory is deployed automatically by the GitHub Pages workflow.
 The FastAPI/PostgreSQL implementation remains the source of truth; the static adapter exists
 only to make the portfolio demo fast, free to host, and resilient for reviewers.
+
+Club crests are loaded from the public football-data.org crest CDN and are displayed only
+for club identification. All club names and crests remain trademarks of their respective owners.
 
 ## Useful API endpoints
 
