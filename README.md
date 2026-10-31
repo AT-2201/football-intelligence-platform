@@ -20,8 +20,9 @@ V1 delivers:
 - a responsive, competition-led analyst dashboard with horizontal navigation, all 20
   Premier League 2015/16 club crests, overview, match, team, player, squad-planning, and
   multi-player comparison views;
-- complete club intelligence profiles covering results and form, tactical identity,
-  passing and progression, attack, defence, formations, and event-location maps;
+- complete club intelligence profiles covering results, formations, and 38 match-specific
+  tactical reports per team for build-up, tempo, directness, territory, width, transitions,
+  pressing, and opponent disruption;
 - season totals, normalized per-90 output, positional filtering, and an explainable
   squad replacement planner with shortlist-to-comparison workflow;
 - player-specific replacement recommendations with transparent evidence and trade-offs
@@ -96,7 +97,7 @@ command because the event dataset is large.
 
 ## Public portfolio demo
 
-The public GitHub Pages edition is a 9 MB static analytics snapshot generated from the
+The public GitHub Pages edition is an 8 MB static analytics snapshot generated from the
 validated database. It retains the complete interactive product experience without
 publishing the 851 MB raw-data cache or 1.3 GB development database.
 
@@ -144,10 +145,11 @@ available in the generated OpenAPI documentation at `/docs`.
 
 - **Overview:** coverage, competition totals, calculated standings, and scoring leaders.
 - **Match Analysis:** searchable fixtures, team comparison, xG, shot map, and player output.
-- **Team Analysis:** club overview, home/away record, match form and xG trend, tactical
-  identity, possession sequences, progressive passing and carrying, attack channels,
-  chance quality, pressing, defensive height, formation usage, and spatial maps. All
-  metrics are direct event-derived values with an on-page methodology—no composite score.
+- **Team Analysis:** club overview, home/away record, match form and xG trend, formation
+  usage, and a separate tactical report for every league match. Each report explains
+  build-up, sequence tempo, pass directness, territory, field tilt, width, transition
+  behaviour, pressing height, counterpressing, and opponent disruption. Selected-match
+  values are compared with the same club's season baseline—no percentile or composite score.
 - **Player Analysis:** totals, per-90 statistics, workload, and match logs.
 - **Squad Replacement Planner:** choose an unavailable or outgoing player, set the replacement
   priority and evidence threshold, then review a position-aware shortlist from outside the

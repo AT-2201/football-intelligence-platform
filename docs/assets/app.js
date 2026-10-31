@@ -1,5 +1,5 @@
 const state = { overview: null, matches: [], teams: [], teamProfiles: {}, selectedTeamId: null, pendingTeamName: null, players: [], scouts: [], selectedScoutId: null, replacementData: null, shortlistIds: [], recommendationTeams: [], recommendationPool: [], squadNeeds: null, recommendations: null, recommendationShortlistIds: [], comparePool: [], comparisonIds: [], comparison: null };
-const titles = { overview: 'Season overview', matches: 'Match reports', teams: 'Team profiles', players: 'Player profiles', recommendations: 'Squad replacement planner', compare: 'Player comparison' };
+const titles = { overview: 'Season overview', matches: 'Match reports', teams: 'Club intelligence', players: 'Player profiles', recommendations: 'Squad replacement planner', compare: 'Player comparison' };
 const comparisonMetrics = [
   ['attacking','goals','Goals',0], ['attacking','xg','xG',2], ['attacking','shots','Shots',0],
   ['possession','passes','Passes',0], ['possession','carries','Carries',0],
