@@ -216,6 +216,8 @@
     if (pathname === '/api/v1/standings') return clone(data.standings);
     if (pathname === '/api/v1/matches') return clone(data.matches).slice(Number(url.searchParams.get('offset') || 0), Number(url.searchParams.get('limit') || 50));
     if (pathname === '/api/v1/teams') return clone(data.teams);
+    let teamProfile = pathname.match(/^\/api\/v1\/teams\/(\d+)\/intelligence$/);
+    if (teamProfile) return clone(data.teamIntelligence?.[teamProfile[1]]);
     if (pathname === '/api/v1/players') {
       const minimum = Number(url.searchParams.get('min_minutes') || 0);
       const team = url.searchParams.get('team_id');

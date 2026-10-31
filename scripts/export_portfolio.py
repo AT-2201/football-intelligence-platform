@@ -24,7 +24,14 @@ def main() -> None:
     assets = OUTPUT / "assets"
     assets.mkdir(exist_ok=True)
     shutil.copy2(STATIC / "index.html", OUTPUT / "index.html")
-    for name in ("styles.css", "app.js", "data-adapter.js", "favicon.svg"):
+    for name in (
+        "styles.css",
+        "team-page.css",
+        "app.js",
+        "team-page.js",
+        "data-adapter.js",
+        "favicon.svg",
+    ):
         shutil.copy2(STATIC / name, assets / name)
     (OUTPUT / ".nojekyll").touch()
 
@@ -43,8 +50,7 @@ def main() -> None:
             )
             match_players[match_id] = get(client, f"/api/v1/matches/{match_id}/players")
         player_details = {
-            str(player_id): get(client, f"/api/v1/players/{player_id}")
-            for player_id in player_ids
+            str(player_id): get(client, f"/api/v1/players/{player_id}") for player_id in player_ids
         }
         player_logs = {
             str(player_id): get(client, f"/api/v1/players/{player_id}/matches?limit=100")
@@ -55,6 +61,10 @@ def main() -> None:
             "standings": get(client, "/api/v1/standings"),
             "matches": matches,
             "teams": get(client, "/api/v1/teams"),
+            "teamIntelligence": {
+                str(team["team_id"]): get(client, f"/api/v1/teams/{team['team_id']}/intelligence")
+                for team in get(client, "/api/v1/teams")
+            },
             "players": players,
             "matchDetails": match_details,
             "matchShots": match_shots,
@@ -67,9 +77,7 @@ def main() -> None:
             ),
         }
     payload = json.dumps(snapshot, ensure_ascii=False, separators=(",", ":"))
-    (assets / "data.js").write_text(
-        f"window.PORTFOLIO_DATA={payload};\n", encoding="utf-8"
-    )
+    (assets / "data.js").write_text(f"window.PORTFOLIO_DATA={payload};\n", encoding="utf-8")
     print(f"Exported {len(matches)} matches and {len(player_ids)} players to {OUTPUT}")
 
 

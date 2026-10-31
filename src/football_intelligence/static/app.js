@@ -1,4 +1,4 @@
-const state = { overview: null, matches: [], teams: [], players: [], scouts: [], selectedScoutId: null, replacementData: null, shortlistIds: [], recommendationTeams: [], recommendationPool: [], squadNeeds: null, recommendations: null, recommendationShortlistIds: [], comparePool: [], comparisonIds: [], comparison: null };
+const state = { overview: null, matches: [], teams: [], teamProfiles: {}, selectedTeamId: null, pendingTeamName: null, players: [], scouts: [], selectedScoutId: null, replacementData: null, shortlistIds: [], recommendationTeams: [], recommendationPool: [], squadNeeds: null, recommendations: null, recommendationShortlistIds: [], comparePool: [], comparisonIds: [], comparison: null };
 const titles = { overview: 'Season overview', matches: 'Match reports', teams: 'Team profiles', players: 'Player profiles', recommendations: 'Squad replacement planner', compare: 'Player comparison' };
 const comparisonMetrics = [
   ['attacking','goals','Goals',0], ['attacking','xg','xG',2], ['attacking','shots','Shots',0],
@@ -22,7 +22,12 @@ function crest(team, size='') {
   return `<span class="club-mark ${size}" title="${esc(team)}"><span>${esc(clubInitials(team))}</span>${id?`<img src="https://crests.football-data.org/${id}.png" alt="${esc(team)} crest" loading="lazy" onerror="this.remove()">`:''}</span>`;
 }
 function renderClubRibbon() {
-  $('#club-ribbon').innerHTML=Object.keys(clubCrests).map(team=>`<button type="button" class="club-ribbon-item" title="${esc(team)}" aria-label="${esc(team)}">${crest(team,'ribbon-crest')}</button>`).join('');
+  $('#club-ribbon').innerHTML=Object.keys(clubCrests).map(team=>`<button type="button" class="club-ribbon-item" data-ribbon-team="${esc(team)}" title="Open ${esc(team)} analysis" aria-label="Open ${esc(team)} analysis">${crest(team,'ribbon-crest')}</button>`).join('');
+  $$('[data-ribbon-team]').forEach(button=>button.onclick=()=>{
+    state.pendingTeamName=button.dataset.ribbonTeam;
+    navigate('teams');
+    if(state.teams.length){const team=state.teams.find(item=>item.team_name===state.pendingTeamName);if(team)openTeam(team.team_id);state.pendingTeamName=null;}
+  });
 }
 
 async function api(path) {
@@ -93,9 +98,7 @@ async function openMatch(id) {
 }
 
 async function loadTeams() {
-  const grid = $('#team-grid'); loading(grid);
-  try { state.teams = await api('/api/v1/teams'); grid.innerHTML = state.teams.map(t => `<article class="team-card"><div class="team-card-heading">${crest(t.team_name,'team-card-crest')}<div><p class="section-kicker">${t.matches} LEAGUE MATCHES</p><h3>${esc(t.team_name)}</h3></div></div><div class="team-stats"><div class="team-stat"><span>Goals scored</span><strong>${t.goals}</strong></div><div class="team-stat"><span>Expected goals</span><strong>${fmt(t.xg,1)}</strong></div><div class="team-stat"><span>Avg. possession</span><strong>${fmt(t.avg_possession_pct,1)}%</strong></div></div></article>`).join('') || '<div class="loading">Run transformations to populate club profiles.</div>'; }
-  catch (error) { grid.innerHTML=''; toast(error.message); }
+  return loadTeamsWorkspace();
 }
 
 async function loadPlayers() {
@@ -358,5 +361,6 @@ $('#recommend-player').addEventListener('change',setDefaultReplacementPriority);
 $('#run-recommendations').addEventListener('click',runRecommendations);
 $('#compare-search').addEventListener('input',renderComparisonSearch);
 $('#download-comparison').addEventListener('click',event=>{if(event.currentTarget.classList.contains('disabled'))event.preventDefault();});
+initTeamPageControls();
 const initial=location.hash.slice(1); navigate(titles[initial]?initial:'overview'); loadOverview();
 renderClubRibbon();

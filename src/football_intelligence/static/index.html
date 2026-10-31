@@ -6,7 +6,8 @@
   <meta name="description" content="Premier League 2015/16 match, club, player and recruitment intelligence.">
   <title>Touchline Intelligence</title>
   <link rel="icon" href="./assets/favicon.svg" type="image/svg+xml">
-  <link rel="stylesheet" href="./assets/styles.css?v=11">
+  <link rel="stylesheet" href="./assets/styles.css?v=12">
+  <link rel="stylesheet" href="./assets/team-page.css?v=1">
 </head>
 <body>
   <div class="app-shell">
@@ -75,8 +76,13 @@
       </section>
 
       <section class="page" id="page-teams">
-        <div class="intro-row"><div><p class="section-kicker">CLUB BENCHMARKS</p><h2>Team season profiles</h2></div><p class="lede">Compare each club’s goals, expected goals and average possession across the full league season.</p></div>
-        <div class="card-grid" id="team-grid"></div>
+        <div class="intro-row"><div><p class="section-kicker">CLUB INTELLIGENCE</p><h2>Understand how every team played</h2></div><p class="lede">Select a club to explore its season, form, tactical identity, ball movement, attacking output, defensive approach, formations and event-location maps.</p></div>
+        <div class="club-picker">
+          <label for="team-select"><span>Choose a club</span><select id="team-select" aria-label="Choose a club"><option>Loading clubs…</option></select></label>
+          <button class="primary-button" id="open-team-profile" type="button">Open club analysis</button>
+        </div>
+        <div id="team-directory"><div class="card-grid" id="team-grid"></div></div>
+        <div id="team-intelligence" class="team-intelligence" hidden></div>
       </section>
 
       <section class="page" id="page-players">
@@ -124,7 +130,8 @@
     </main>
   </div>
   <script src="./assets/data.js"></script>
-  <script src="./assets/data-adapter.js?v=9"></script>
-  <script src="./assets/app.js?v=11" defer></script>
+  <script src="./assets/data-adapter.js?v=10"></script>
+  <script src="./assets/team-page.js?v=1" defer></script>
+  <script src="./assets/app.js?v=12" defer></script>
 </body>
 </html>

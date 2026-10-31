@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import desc, select
 from sqlalchemy.orm import Session, aliased
 
+from football_intelligence.analytics.team_intelligence import build_team_intelligence
 from football_intelligence.config import Settings, get_settings
 from football_intelligence.db import get_db
 from football_intelligence.models import (
@@ -110,9 +111,7 @@ def match_detail(match_id: int, db: Session = Depends(get_db)) -> dict:
 
 
 @router.get("/teams")
-def teams(
-    db: Session = Depends(get_db), settings: Settings = Depends(get_settings)
-) -> list[dict]:
+def teams(db: Session = Depends(get_db), settings: Settings = Depends(get_settings)) -> list[dict]:
     competition_id, season_id = _scope(settings)
     rows = db.execute(
         select(TeamSeasonStat, Team.team_name)
@@ -163,6 +162,20 @@ def team_matches(
     ]
 
 
+@router.get("/teams/{team_id}/intelligence")
+def team_intelligence(
+    team_id: int,
+    db: Session = Depends(get_db),
+    settings: Settings = Depends(get_settings),
+) -> dict:
+    """Detailed tactical, results and spatial profile for one club."""
+    competition_id, season_id = _scope(settings)
+    payload = build_team_intelligence(db, team_id, competition_id, season_id)
+    if not payload:
+        raise HTTPException(404, "Team not found in the current competition-season")
+    return payload
+
+
 @router.get("/players")
 def players(
     team_id: int | None = None,
@@ -187,8 +200,7 @@ def players(
     if team_id is not None:
         statement = statement.where(PlayerSeasonStat.team_id == team_id)
     return [
-        _player_payload(stat, name, team_name)
-        for stat, name, team_name in db.execute(statement)
+        _player_payload(stat, name, team_name) for stat, name, team_name in db.execute(statement)
     ]
 
 
