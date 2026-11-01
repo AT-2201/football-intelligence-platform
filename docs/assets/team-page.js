@@ -30,7 +30,48 @@ function ordinal(value){const n=value%100;if(n>=11&&n<=13)return `${value}TH`;re
 
 function pitchLines(){return `<g class="pitch-lines"><rect x="1" y="1" width="118" height="78" rx="1"/><line x1="60" y1="1" x2="60" y2="79"/><circle cx="60" cy="40" r="10"/><circle cx="60" cy="40" r=".8"/><rect x="1" y="18" width="18" height="44"/><rect x="101" y="18" width="18" height="44"/><rect x="1" y="30" width="6" height="20"/><rect x="113" y="30" width="6" height="20"/></g>`;}
 
-function positionCoordinate(position,index){const name=position.toLowerCase(),side=name.includes('right')?24:name.includes('left')?56:40;if(name.includes('goalkeeper'))return[8,40];if(name.includes('back'))return[name.includes('wing')?34:27,side];if(name.includes('defensive midfield'))return[46,side];if(name.includes('center midfield')||name.includes('central midfield'))return[59,side];if(name.includes('attacking midfield'))return[75,side];if(name.includes('midfield'))return[66,side];if(name.includes('wing'))return[84,side];if(name.includes('forward'))return[100,side];return[18+index*8,40];}
+const formationCoordinates={
+  'Goalkeeper':[8,40],
+  'Right Back':[27,12],
+  'Right Center Back':[27,28],
+  'Center Back':[27,40],
+  'Left Center Back':[27,52],
+  'Left Back':[27,68],
+  'Right Wing Back':[39,12],
+  'Left Wing Back':[39,68],
+  'Right Defensive Midfield':[46,25],
+  'Center Defensive Midfield':[46,40],
+  'Left Defensive Midfield':[46,55],
+  'Right Center Midfield':[59,25],
+  'Center Midfield':[59,40],
+  'Left Center Midfield':[59,55],
+  'Right Midfield':[66,13],
+  'Left Midfield':[66,67],
+  'Right Attacking Midfield':[75,24],
+  'Center Attacking Midfield':[75,40],
+  'Left Attacking Midfield':[75,56],
+  'Right Wing':[86,15],
+  'Left Wing':[86,65],
+  'Right Center Forward':[101,28],
+  'Center Forward':[101,40],
+  'Left Center Forward':[101,52]
+};
+
+function positionCoordinate(position,index){
+  if(formationCoordinates[position])return formationCoordinates[position];
+  const name=position.toLowerCase();
+  const side=name.includes('right')?22:name.includes('left')?58:40;
+  if(name.includes('goalkeeper'))return[8,40];
+  if(name.includes('wing back'))return[39,side];
+  if(name.includes('back'))return[27,side];
+  if(name.includes('defensive midfield'))return[46,side];
+  if(name.includes('center midfield')||name.includes('central midfield'))return[59,side];
+  if(name.includes('attacking midfield'))return[75,side];
+  if(name.includes('midfield'))return[66,side];
+  if(name.includes('wing'))return[86,side];
+  if(name.includes('forward'))return[101,side];
+  return[18+(index%10)*8,12+(index%3)*28];
+}
 
 function positionAbbreviation(position){const known={'Goalkeeper':'GK','Right Back':'RB','Left Back':'LB','Right Center Back':'RCB','Left Center Back':'LCB','Center Back':'CB','Right Wing Back':'RWB','Left Wing Back':'LWB','Right Defensive Midfield':'RDM','Left Defensive Midfield':'LDM','Center Defensive Midfield':'DM','Right Center Midfield':'RCM','Left Center Midfield':'LCM','Center Midfield':'CM','Right Midfield':'RM','Left Midfield':'LM','Right Attacking Midfield':'RAM','Left Attacking Midfield':'LAM','Center Attacking Midfield':'AM','Right Wing':'RW','Left Wing':'LW','Right Center Forward':'RCF','Left Center Forward':'LCF','Center Forward':'CF'};return known[position]||position.split(' ').map(word=>word[0]).join('').slice(0,3).toUpperCase();}
 
