@@ -27,8 +27,10 @@ def main() -> None:
     for name in (
         "styles.css",
         "team-page.css",
+        "game-day.css",
         "app.js",
         "team-page.js",
+        "game-day.js",
         "data-adapter.js",
         "favicon.svg",
     ):
@@ -63,6 +65,10 @@ def main() -> None:
             "teams": get(client, "/api/v1/teams"),
             "teamIntelligence": {
                 str(team["team_id"]): get(client, f"/api/v1/teams/{team['team_id']}/intelligence")
+                for team in get(client, "/api/v1/teams")
+            },
+            "gameDay": {
+                str(team["team_id"]): get(client, f"/api/v1/game-day/teams/{team['team_id']}")
                 for team in get(client, "/api/v1/teams")
             },
             "players": players,

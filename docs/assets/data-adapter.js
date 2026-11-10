@@ -218,6 +218,8 @@
     if (pathname === '/api/v1/teams') return clone(data.teams);
     let teamProfile = pathname.match(/^\/api\/v1\/teams\/(\d+)\/intelligence$/);
     if (teamProfile) return clone(data.teamIntelligence?.[teamProfile[1]]);
+    let gameDay = pathname.match(/^\/api\/v1\/game-day\/teams\/(\d+)$/);
+    if (gameDay) return clone(data.gameDay?.[gameDay[1]]);
     if (pathname === '/api/v1/players') {
       const minimum = Number(url.searchParams.get('min_minutes') || 0);
       const team = url.searchParams.get('team_id');

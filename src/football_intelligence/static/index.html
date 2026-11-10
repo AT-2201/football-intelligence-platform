@@ -8,6 +8,7 @@
   <link rel="icon" href="./assets/favicon.svg" type="image/svg+xml">
   <link rel="stylesheet" href="./assets/styles.css?v=12">
   <link rel="stylesheet" href="./assets/team-page.css?v=2">
+  <link rel="stylesheet" href="./assets/game-day.css?v=1">
 </head>
 <body>
   <div class="app-shell">
@@ -20,9 +21,10 @@
         <button class="nav-item active" data-page="overview"><span>01</span>Overview</button>
         <button class="nav-item" data-page="matches"><span>02</span>Matches</button>
         <button class="nav-item" data-page="teams"><span>03</span>Teams</button>
-        <button class="nav-item" data-page="players"><span>04</span>Players</button>
-        <button class="nav-item" data-page="recommendations"><span>05</span>Squad planner</button>
-        <button class="nav-item" data-page="compare"><span>06</span>Compare players</button>
+        <button class="nav-item" data-page="game-day"><span>04</span>Game day</button>
+        <button class="nav-item" data-page="players"><span>05</span>Players</button>
+        <button class="nav-item" data-page="recommendations"><span>06</span>Squad planner</button>
+        <button class="nav-item" data-page="compare"><span>07</span>Compare players</button>
       </nav>
       <div class="source-card">
         <img class="source-logo" src="https://raw.githubusercontent.com/hudl/open-data/master/img/SB%20-%20Icon%20Lockup%20-%20Colour%20positive.png" alt="StatsBomb">
@@ -85,6 +87,17 @@
         <div id="team-intelligence" class="team-intelligence" hidden></div>
       </section>
 
+      <section class="page" id="page-game-day">
+        <div class="intro-row"><div><p class="section-kicker">PRE-MATCH DECISION SUPPORT</p><h2>Game Day Planner</h2></div><p class="lede">Forecast the manager’s likely formation, starting XI and substitutions, then test availability and in-game contingencies against the opponent.</p></div>
+        <article class="game-day-picker">
+          <label>Club<select id="game-day-team" aria-label="Select a club for game-day planning"></select></label>
+          <label>Historical next fixture<select id="game-day-fixture" aria-label="Select a historical fixture"></select></label>
+          <button class="primary-button" id="run-game-day" type="button">Build match plan</button>
+          <p>Every fixture is forecast using only matches played before it.</p>
+        </article>
+        <div id="game-day-workspace"><div class="empty-state"><span class="empty-glyph">◇</span><h3>Select a club and fixture</h3><p>Build a leakage-safe pre-match forecast and contingency plan.</p></div></div>
+      </section>
+
       <section class="page" id="page-players">
         <div class="intro-row"><div><p class="section-kicker">PLAYER DIRECTORY</p><h2>Player season profiles</h2></div><p class="lede">Review appearances and minutes alongside per-90 statistics—the number of actions expected over 90 minutes.</p></div>
         <div class="toolbar filters"><label class="search"><span>⌕</span><input id="player-search" type="search" placeholder="Search players" aria-label="Search players"></label><label>Minimum minutes<input id="player-minutes" type="number" min="0" step="90" value="0"></label></div>
@@ -132,6 +145,7 @@
   <script src="./assets/data.js"></script>
   <script src="./assets/data-adapter.js?v=10"></script>
   <script src="./assets/team-page.js?v=3" defer></script>
-  <script src="./assets/app.js?v=13" defer></script>
+  <script src="./assets/game-day.js?v=1" defer></script>
+  <script src="./assets/app.js?v=14" defer></script>
 </body>
 </html>

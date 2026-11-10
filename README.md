@@ -23,6 +23,9 @@ V1 delivers:
 - complete club intelligence profiles covering results, formations, and 38 match-specific
   tactical reports per team for build-up, tempo, directness, territory, width, transitions,
   pressing, and opponent disruption;
+- a leakage-safe Game Day Planner with formation and starting-XI probabilities, availability
+  adjustments, opposition briefs, match-importance context, score-state substitution forecasts,
+  red-card contingencies, and walk-forward model validation;
 - season totals, normalized per-90 output, positional filtering, and an explainable
   squad replacement planner with shortlist-to-comparison workflow;
 - player-specific replacement recommendations with transparent evidence and trade-offs
@@ -97,7 +100,7 @@ command because the event dataset is large.
 
 ## Public portfolio demo
 
-The public GitHub Pages edition is an 8 MB static analytics snapshot generated from the
+The public GitHub Pages edition is a 23 MB static analytics snapshot generated from the
 validated database. It retains the complete interactive product experience without
 publishing the 851 MB raw-data cache or 1.3 GB development database.
 
@@ -127,6 +130,7 @@ for club identification. All club names and crests remain trademarks of their re
 - `GET /api/v1/teams`
 - `GET /api/v1/teams/{team_id}/matches`
 - `GET /api/v1/teams/{team_id}/intelligence`
+- `GET /api/v1/game-day/teams/{team_id}`
 - `GET /api/v1/players?team_id=...&min_minutes=...`
 - `GET /api/v1/players/{player_id}`
 - `GET /api/v1/players/{player_id}/matches`
@@ -151,6 +155,12 @@ available in the generated OpenAPI documentation at `/docs`.
   behaviour, pressing height, counterpressing, and opponent disruption. Selected-match
   values are compared with the same club's season baseline—no percentile or composite score.
 - **Player Analysis:** totals, per-90 statistics, workload, and match logs.
+- **Game Day Planner:** choose any fixture from Matchweek 6 onward and forecast it using only
+  earlier matches. The module separates the manager forecast from analyst recommendations,
+  predicts formation and eleven starters, supports user-entered availability changes, profiles
+  the opponent, estimates match importance, conditions substitution patterns on score state,
+  and builds a ten-player response for a selected red-card scenario. Walk-forward accuracy is
+  displayed before the recommendations so uncertainty remains visible.
 - **Squad Replacement Planner:** choose an unavailable or outgoing player, set the replacement
   priority and evidence threshold, then review a position-aware shortlist from outside the
   current club. Each recommendation exposes profile match, evidence confidence, supporting

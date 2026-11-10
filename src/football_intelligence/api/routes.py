@@ -4,6 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import desc, select
 from sqlalchemy.orm import Session, aliased
 
+from football_intelligence.analytics.game_day import build_game_day_workspace
 from football_intelligence.analytics.team_intelligence import build_team_intelligence
 from football_intelligence.config import Settings, get_settings
 from football_intelligence.db import get_db
@@ -171,6 +172,20 @@ def team_intelligence(
     """Detailed tactical, results and spatial profile for one club."""
     competition_id, season_id = _scope(settings)
     payload = build_team_intelligence(db, team_id, competition_id, season_id)
+    if not payload:
+        raise HTTPException(404, "Team not found in the current competition-season")
+    return payload
+
+
+@router.get("/game-day/teams/{team_id}")
+def game_day_workspace(
+    team_id: int,
+    db: Session = Depends(get_db),
+    settings: Settings = Depends(get_settings),
+) -> dict:
+    """Chronological lineup, substitution and contingency forecasts for one club."""
+    competition_id, season_id = _scope(settings)
+    payload = build_game_day_workspace(db, team_id, competition_id, season_id)
     if not payload:
         raise HTTPException(404, "Team not found in the current competition-season")
     return payload

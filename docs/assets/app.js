@@ -1,5 +1,5 @@
-const state = { overview: null, matches: [], teams: [], teamProfiles: {}, selectedTeamId: null, pendingTeamName: null, players: [], scouts: [], selectedScoutId: null, replacementData: null, shortlistIds: [], recommendationTeams: [], recommendationPool: [], squadNeeds: null, recommendations: null, recommendationShortlistIds: [], comparePool: [], comparisonIds: [], comparison: null };
-const titles = { overview: 'Season overview', matches: 'Match reports', teams: 'Club intelligence', players: 'Player profiles', recommendations: 'Squad replacement planner', compare: 'Player comparison' };
+const state = { overview: null, matches: [], teams: [], teamProfiles: {}, selectedTeamId: null, pendingTeamName: null, gameDayTeams: [], gameDayWorkspaces: {}, selectedGameDayPlan: null, gameDayUnavailable: new Set(), players: [], scouts: [], selectedScoutId: null, replacementData: null, shortlistIds: [], recommendationTeams: [], recommendationPool: [], squadNeeds: null, recommendations: null, recommendationShortlistIds: [], comparePool: [], comparisonIds: [], comparison: null };
+const titles = { overview: 'Season overview', matches: 'Match reports', teams: 'Club intelligence', 'game-day': 'Game Day Planner', players: 'Player profiles', recommendations: 'Squad replacement planner', compare: 'Player comparison' };
 const comparisonMetrics = [
   ['attacking','goals','Goals',0], ['attacking','xg','xG',2], ['attacking','shots','Shots',0],
   ['possession','passes','Passes',0], ['possession','carries','Carries',0],
@@ -49,6 +49,7 @@ function navigate(page) {
   history.replaceState(null, '', `#${page}`); window.scrollTo({top: 0, behavior: 'smooth'});
   if (page === 'matches' && !state.matches.length) loadMatches();
   if (page === 'teams' && !state.teams.length) loadTeams();
+  if (page === 'game-day' && !state.gameDayTeams.length) loadGameDayPlanner();
   if (page === 'players' && !state.players.length) loadPlayers();
   if (page === 'recommendations' && !state.recommendationPool.length) loadRecommendationWorkspace();
   if (page === 'compare' && !state.comparePool.length) loadComparisonWorkspace();
@@ -362,5 +363,6 @@ $('#run-recommendations').addEventListener('click',runRecommendations);
 $('#compare-search').addEventListener('input',renderComparisonSearch);
 $('#download-comparison').addEventListener('click',event=>{if(event.currentTarget.classList.contains('disabled'))event.preventDefault();});
 initTeamPageControls();
+initGameDayControls();
 const initial=location.hash.slice(1); navigate(titles[initial]?initial:'overview'); loadOverview();
 renderClubRibbon();
