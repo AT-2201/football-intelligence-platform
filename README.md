@@ -23,9 +23,9 @@ V1 delivers:
 - complete club intelligence profiles covering results, formations, and 38 match-specific
   tactical reports per team for build-up, tempo, directness, territory, width, transitions,
   pressing, and opponent disruption;
-- a leakage-safe Game Day Planner with formation and starting-XI probabilities, availability
-  adjustments, opposition briefs, match-importance context, score-state substitution forecasts,
-  red-card contingencies, and walk-forward model validation;
+- a leakage-safe Game Day Planner focused on the opposition, with opponent formation and
+  starting-XI probabilities, availability assumptions, score-state substitution forecasts,
+  match preparation notes, opponent red-card responses, and walk-forward validation;
 - season totals, normalized per-90 output, positional filtering, and an explainable
   squad replacement planner with shortlist-to-comparison workflow;
 - player-specific replacement recommendations with transparent evidence and trade-offs
@@ -156,12 +156,12 @@ available in the generated OpenAPI documentation at `/docs`.
   behaviour, pressing height, counterpressing, and opponent disruption. Selected-match
   values are compared with the same club's season baseline—no percentile or composite score.
 - **Player Analysis:** totals, per-90 statistics, workload, and match logs.
-- **Game Day Planner:** choose any fixture from Matchweek 6 onward and forecast it using only
-  earlier matches. The module separates the manager forecast from analyst recommendations,
-  predicts formation and eleven starters, supports user-entered availability changes, profiles
-  the opponent, estimates match importance, conditions substitution patterns on score state,
-  and builds a ten-player response for a selected red-card scenario. Walk-forward accuracy is
-  displayed before the recommendations so uncertainty remains visible.
+- **Game Day Planner:** choose your club and any fixture from Matchweek 6 onward to forecast the
+  opposing team using only information that existed before kickoff. The explainable model
+  predicts the opponent's formation and eleven starters, supports availability assumptions,
+  profiles strengths and weaknesses, conditions likely substitutions on the opponent's score
+  state, and estimates how the opponent may reorganise and which substitute may enter after a
+  selected opposing player is dismissed. Walk-forward accuracy is shown before recommendations.
 - **Squad Replacement Planner:** choose an unavailable or outgoing player, set the replacement
   priority and evidence threshold, then review a position-aware shortlist from outside the
   current club. Each recommendation exposes profile match, evidence confidence, supporting

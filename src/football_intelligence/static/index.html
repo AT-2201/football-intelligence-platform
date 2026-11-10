@@ -88,12 +88,12 @@
       </section>
 
       <section class="page" id="page-game-day">
-        <div class="intro-row"><div><p class="section-kicker">PRE-MATCH DECISION SUPPORT</p><h2>Game Day Planner</h2></div><p class="lede">Forecast the manager’s likely formation, starting XI and substitutions, then test availability and in-game contingencies against the opponent.</p></div>
+        <div class="intro-row"><div><p class="section-kicker">OPPOSITION PREPARATION</p><h2>Game Day Planner</h2></div><p class="lede">Select your club and fixture to forecast the opposing team’s formation, starting XI, substitutions and likely response to a dismissal.</p></div>
         <article class="game-day-picker">
-          <label>Club<select id="game-day-team" aria-label="Select a club for game-day planning"></select></label>
+          <label>Your club<select id="game-day-team" aria-label="Select your club for game-day planning"></select></label>
           <label>Historical next fixture<select id="game-day-fixture" aria-label="Select a historical fixture"></select></label>
           <button class="primary-button" id="run-game-day" type="button">Build match plan</button>
-          <p>Every fixture is forecast using only matches played before it.</p>
+          <p>Every opponent forecast uses only information available before the selected kickoff.</p>
         </article>
         <div id="game-day-workspace"><div class="empty-state"><span class="empty-glyph">◇</span><h3>Select a club and fixture</h3><p>Build a leakage-safe pre-match forecast and contingency plan.</p></div></div>
       </section>
@@ -145,7 +145,7 @@
   <script src="./assets/data.js?v=game-day-lazy-1"></script>
   <script src="./assets/data-adapter.js?v=11"></script>
   <script src="./assets/team-page.js?v=3" defer></script>
-  <script src="./assets/game-day.js?v=1" defer></script>
+  <script src="./assets/game-day.js?v=2" defer></script>
   <script src="./assets/app.js?v=14" defer></script>
 </body>
 </html>

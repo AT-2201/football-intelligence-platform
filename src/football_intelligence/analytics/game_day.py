@@ -302,7 +302,7 @@ def _forecast_substitutions(
                     "on_player_id": on_id,
                     "on_player_name": player_names.get(on_id, replacement_name(on_id, rows)),
                     "probability": _round(100 * values["weight"] / total_weight, 1),
-                    "minute_from": max(45, minute - 8),
+                    "minute_from": max(1, minute - 8),
                     "minute_to": min(90, minute + 8),
                     "reason": reason,
                 }
