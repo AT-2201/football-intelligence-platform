@@ -100,7 +100,8 @@ command because the event dataset is large.
 
 ## Public portfolio demo
 
-The public GitHub Pages edition is a 23 MB static analytics snapshot generated from the
+The public GitHub Pages edition uses an 8 MB core analytics snapshot plus team forecasts
+loaded on demand, generated from the
 validated database. It retains the complete interactive product experience without
 publishing the 851 MB raw-data cache or 1.3 GB development database.
 

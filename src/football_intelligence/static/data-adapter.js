@@ -219,7 +219,15 @@
     let teamProfile = pathname.match(/^\/api\/v1\/teams\/(\d+)\/intelligence$/);
     if (teamProfile) return clone(data.teamIntelligence?.[teamProfile[1]]);
     let gameDay = pathname.match(/^\/api\/v1\/game-day\/teams\/(\d+)$/);
-    if (gameDay) return clone(data.gameDay?.[gameDay[1]]);
+    if (gameDay) {
+      const teamId = gameDay[1];
+      if (data.gameDay?.[teamId]) return clone(data.gameDay[teamId]);
+      data.gameDay = data.gameDay || {};
+      const response = await fetch(`./assets/game-day/${teamId}.json?v=game-day-lazy-1`);
+      if (!response.ok) throw new Error(`Unable to load game-day forecasts (${response.status})`);
+      data.gameDay[teamId] = await response.json();
+      return clone(data.gameDay[teamId]);
+    }
     if (pathname === '/api/v1/players') {
       const minimum = Number(url.searchParams.get('min_minutes') || 0);
       const team = url.searchParams.get('team_id');

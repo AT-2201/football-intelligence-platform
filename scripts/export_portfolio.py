@@ -23,6 +23,8 @@ def main() -> None:
     OUTPUT.mkdir(exist_ok=True)
     assets = OUTPUT / "assets"
     assets.mkdir(exist_ok=True)
+    game_day_assets = assets / "game-day"
+    game_day_assets.mkdir(exist_ok=True)
     shutil.copy2(STATIC / "index.html", OUTPUT / "index.html")
     for name in (
         "styles.css",
@@ -58,18 +60,19 @@ def main() -> None:
             str(player_id): get(client, f"/api/v1/players/{player_id}/matches?limit=100")
             for player_id in player_ids
         }
+        teams = get(client, "/api/v1/teams")
+        game_day = {
+            str(team["team_id"]): get(client, f"/api/v1/game-day/teams/{team['team_id']}")
+            for team in teams
+        }
         snapshot = {
             "overview": get(client, "/api/v1/overview"),
             "standings": get(client, "/api/v1/standings"),
             "matches": matches,
-            "teams": get(client, "/api/v1/teams"),
+            "teams": teams,
             "teamIntelligence": {
                 str(team["team_id"]): get(client, f"/api/v1/teams/{team['team_id']}/intelligence")
-                for team in get(client, "/api/v1/teams")
-            },
-            "gameDay": {
-                str(team["team_id"]): get(client, f"/api/v1/game-day/teams/{team['team_id']}")
-                for team in get(client, "/api/v1/teams")
+                for team in teams
             },
             "players": players,
             "matchDetails": match_details,
@@ -84,6 +87,11 @@ def main() -> None:
         }
     payload = json.dumps(snapshot, ensure_ascii=False, separators=(",", ":"))
     (assets / "data.js").write_text(f"window.PORTFOLIO_DATA={payload};\n", encoding="utf-8")
+    for team_id, forecasts in game_day.items():
+        (game_day_assets / f"{team_id}.json").write_text(
+            json.dumps(forecasts, ensure_ascii=False, separators=(",", ":")),
+            encoding="utf-8",
+        )
     print(f"Exported {len(matches)} matches and {len(player_ids)} players to {OUTPUT}")
 
 
