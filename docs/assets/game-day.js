@@ -75,6 +75,78 @@ function lineupEvidence(players){return `<div class="gd-lineup-list">${players.m
 
 function opponentPanel(plan){const o=plan.opponent,m=o.metrics;return `<div class="gd-opponent-grid"><article class="gd-card"><div class="gd-card-heading"><div><p class="section-kicker">OPPOSITION BRIEF</p><h3>${crest(o.team_name,'list-crest')}${esc(o.team_name)}</h3></div><span>Last ${o.matches_used} matches · ${esc(o.recent_form)}</span></div><div class="gd-opponent-metrics"><span><small>Possession</small><strong>${fmt(m.possession_pct,1)}%</strong></span><span><small>Pass completion</small><strong>${fmt(m.pass_completion_pct,1)}%</strong></span><span><small>Shots</small><strong>${fmt(m.shots_per_match,1)}</strong></span><span><small>xG / match</small><strong>${fmt(m.xg_per_match,2)}</strong></span><span><small>xGA / match</small><strong>${fmt(m.xg_against_per_match,2)}</strong></span></div><div class="gd-strengths"><div><strong>Strengths to prepare for</strong><ul>${o.strengths.map(item=>`<li>${esc(item)}</li>`).join('')}</ul></div><div><strong>Possible openings</strong><ul>${o.weaknesses.map(item=>`<li>${esc(item)}</li>`).join('')}</ul></div></div></article><article class="gd-card match-importance"><p class="section-kicker">MATCH CONTEXT</p><div class="importance-score"><strong>${plan.importance.score}</strong><span>${esc(plan.importance.label)} importance</span></div><p>#${plan.importance.team_position} ${esc(plan.fixture.team_name)} · ${plan.importance.team_points} pts<br>#${plan.importance.opponent_position} ${esc(plan.fixture.opponent_name)} · ${plan.importance.opponent_points} pts</p><ul>${plan.importance.reasons.map(item=>`<li>${esc(item)}</li>`).join('')}</ul><small>${esc(plan.importance.method)}</small></article></div><article class="gd-card matchup-plan"><div><p class="section-kicker">ANALYST MATCHUP NOTES</p><h3>How the forecast connects to the opponent</h3></div><ol>${plan.matchup_notes.map((item,index)=>`<li><span>0${index+1}</span>${esc(item)}</li>`).join('')}</ol></article>`;}
 
+function possessionPatterns(history) {
+  const recent = history.slice(-5);
+  const observations = history.flatMap(match => (match.possessions || []).map(sequence => {
+    const [id, clock, start, furthest, lane, actions, seconds, xg, player, phase] = sequence;
+    // Scale features to similar ranges. Shot outcomes are evaluated after clustering.
+    const features = [start / 120, (furthest - start) / 120, lane / 80,
+      Math.min(actions, 16) / 16, Math.min(seconds, 45) / 45];
+    return {match, id, clock, start, furthest, lane, xg, player, phase, features};
+  }));
+  if (observations.length < 40) return [];
+  const distance = (a, b) => a.reduce((sum, value, i) => sum + (value - b[i]) ** 2, 0);
+  const centers = [observations[0].features];
+  for (let i = 1; i < 5; i++) {
+    let farthest = observations[0].features, best = 0;
+    for (const {features} of observations) {
+      const separation = Math.min(...centers.map(center => distance(features, center)));
+      if (separation > best) { best = separation; farthest = features; }
+    }
+    if (!best) break;
+    centers.push(farthest);
+  }
+  function assign() {
+    const groups = centers.map(() => []);
+    for (const item of observations) {
+      const distances = centers.map(center => distance(center, item.features));
+      groups[distances.indexOf(Math.min(...distances))].push(item);
+    }
+    return groups;
+  }
+  for (let i = 0; i < 12; i++) {
+    assign().forEach((group, index) => {
+      if (group.length) centers[index] = centers[index].map((_, axis) =>
+        group.reduce((total, item) => total + item.features[axis], 0) / group.length);
+    });
+  }
+  return assign().map((group, index) => {
+    const sample = group.filter(item => recent.includes(item.match));
+    const evidence = [...sample].sort((a,b) =>
+      distance(a.features, centers[index]) - distance(b.features, centers[index]));
+    const examples = [];
+    for (const item of evidence) {
+      if (!examples.some(example => example.match === item.match)) examples.push(item);
+      if (examples.length === 3) break;
+    }
+    return {sample, examples, center:centers[index], fixtures:new Set(sample.map(item => item.match)).size};
+  }).filter(pattern => pattern.fixtures >= 2).sort((a,b) => b.sample.length-a.sample.length);
+}
+
+function tacticalPatternsPanel(history) {
+  const patterns = possessionPatterns(history);
+  if (!patterns.length) return '<p>Insufficient event sequences to compare recurring patterns.</p>';
+  const names = new Map(history.flatMap(match => match.players.map(player => [player.id, player.name])));
+  const total = history.slice(-5).reduce((sum, match) => sum + (match.possessions?.length || 0), 0);
+  return '<h4>Observed tactical patterns</h4><p>Similar possessions are grouped using earlier league games for this opponent. The figures below describe the last five. Single-action sequences are excluded.</p>'+
+    patterns.map(({sample, examples, center, fixtures}) => {
+      const [start, gain, lane, , tempo] = center;
+      const route = lane < 1/3 ? 'left' : lane >= 2/3 ? 'right' : 'central';
+      const zone = start < 1/3 ? 'deep start' : start >= 2/3 ? 'high start' : 'middle-third start';
+      const progress = gain >= .25 ? 'large territorial gain' : 'shorter territorial gain';
+      const entries = sample.filter(item => item.start < 80 && item.furthest >= 80).length;
+      const xg = sample.reduce((sum, item) => sum + item.xg, 0);
+      const counts = new Map();
+      for (const {player} of sample) if (names.has(player)) counts.set(player, (counts.get(player) || 0) + 1);
+      const leader = [...counts].sort((a,b) => b[1]-a[1])[0];
+      return `<details><summary>${zone} · ${route} route · ${progress} · ~${fmt(tempo*45,0)} s</summary>
+        <p>${sample.length} sequences (${fmt(100*sample.length/total,0)}%) in ${fixtures} of the last five matches · ${entries} reached the final third from deeper areas · ${fmt(xg,2)} xG · typical duration ${fmt(tempo*45,0)} s (capped at 45 s for grouping).</p>
+        ${leader ? `<p>Most frequent first recorded player: ${esc(names.get(leader[0]))} (${leader[1]} sequences).</p>` : ''}
+        <ul>${examples.map(({match,clock,id}) => `<li>${match.date} vs ${esc(match.opponent)} · ${Math.floor(clock/60)}:${String(clock%60).padStart(2,'0')} · possession ${id}</li>`).join('')}</ul>
+      </details>`;
+    }).join('');
+}
+
 function oppositionReport(workspace, fixture) {
   const matches = (workspace.match_profiles || []).filter(match => match.date < fixture.date).slice(-5);
   if (!matches.length) return '';
@@ -118,6 +190,7 @@ function oppositionReport(workspace, fixture) {
     <li>${peak.xg ? 'Prepare for their strongest chance-creation phase, '+peak.label+' ('+fmt(peak.xg,2)+' xG).' : 'No recorded chance creation in this sample.'}</li>
     <li>${exposed.xga ? 'Review pressing and transition opportunities in '+exposed.label+', when they conceded the most chance quality ('+fmt(exposed.xga,2)+' xG).' : 'No recorded xG conceded in this sample.'}</li></ul>
     <h4>How the match develops</h4>${timeline(phases)}
+    ${tacticalPatternsPanel((workspace.match_profiles || []).filter(match => match.date < fixture.date))}
     <p>Totals across the sample. Stoppage time belongs to the final phase of each half. Entries are completed passes or carries across the final-third boundary. High pressures start in that third. Long passes travel at least 30 StatsBomb pitch units.</p>
     <h4>Player threats and vulnerabilities</h4><div class="gd-strengths">
     ${leaders('Shot threat (xG)',p=>p.minutes>=90&&p.xg>0,p=>p.xg)}
