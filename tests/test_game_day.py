@@ -63,6 +63,16 @@ def test_selected_fixture_has_a_reciprocal_opponent_forecast() -> None:
         if plan["fixture"]["match_id"] == club_plan["fixture"]["match_id"]
     )
     assert opponent_plan["fixture"]["opponent_id"] == 22
+    prior_profiles = [
+        profile for profile in opponent_workspace["match_profiles"]
+        if profile["date"] < club_plan["fixture"]["date"]
+    ][-5:]
+    assert len(prior_profiles) == 5
+    for profile in prior_profiles:
+        assert len(profile["phases"]) == 6
+        assert profile["players"]
+        for phase in profile["phases"]:
+            assert phase["entries"] == phase["left"] + phase["centre"] + phase["right"]
     assert len(opponent_plan["predicted_xi"]) == 11
     assert set(opponent_plan["substitution_forecast"]) == {"leading", "level", "trailing"}
     for scenario in opponent_plan["substitution_forecast"].values():

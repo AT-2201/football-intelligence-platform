@@ -1,4 +1,11 @@
 /* Game Day Planner */
+.gd-scouting { margin-bottom: 16px; }
+.gd-scouting h4 { margin: 1rem 0 .5rem; }
+.gd-scouting p, .gd-scouting li { font-size: 1rem; line-height: 1.5; }
+.gd-scouting summary { padding: .75rem 0; cursor: pointer; font-weight: 700; }
+.gd-phase-table { overflow-x: auto; }
+.gd-phase-table table { width: 100%; min-width: 680px; }
+.gd-phase-table :is(th,td) { padding: .65rem; text-align: left; }
 #page-game-day { --section-accent:#474bff; }
 .game-day-picker { display:grid; grid-template-columns:220px minmax(300px,1fr) auto; gap:12px; align-items:end; margin-bottom:20px; padding:18px; border:1px solid var(--line); border-top:5px solid #474bff; border-radius:14px; background:#fff; box-shadow:0 10px 28px rgba(45,0,56,.07); }
 .game-day-picker label,.contingency-controls label { display:grid; gap:6px; color:#6c5e73; font-size:.68rem; font-weight:800; text-transform:uppercase; letter-spacing:.05em; }

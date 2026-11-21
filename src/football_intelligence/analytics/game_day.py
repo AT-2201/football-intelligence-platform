@@ -9,6 +9,7 @@ from typing import Any
 from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
+from football_intelligence.analytics.opposition import opposition_match_profiles
 from football_intelligence.models import (
     Event,
     Lineup,
@@ -795,6 +796,9 @@ def build_game_day_workspace(
     return {
         "team": {"team_id": team_id, "team_name": team.team_name},
         "plans": plans,
+        "match_profiles": opposition_match_profiles(
+            db, team_id, team_matches, team_names, player_stats, player_names
+        ),
         "backtest": backtest,
         "model": {
             "name": "Explainable Game Day Forecast v1",

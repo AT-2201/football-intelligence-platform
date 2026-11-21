@@ -75,6 +75,61 @@ function lineupEvidence(players){return `<div class="gd-lineup-list">${players.m
 
 function opponentPanel(plan){const o=plan.opponent,m=o.metrics;return `<div class="gd-opponent-grid"><article class="gd-card"><div class="gd-card-heading"><div><p class="section-kicker">OPPOSITION BRIEF</p><h3>${crest(o.team_name,'list-crest')}${esc(o.team_name)}</h3></div><span>Last ${o.matches_used} matches · ${esc(o.recent_form)}</span></div><div class="gd-opponent-metrics"><span><small>Possession</small><strong>${fmt(m.possession_pct,1)}%</strong></span><span><small>Pass completion</small><strong>${fmt(m.pass_completion_pct,1)}%</strong></span><span><small>Shots</small><strong>${fmt(m.shots_per_match,1)}</strong></span><span><small>xG / match</small><strong>${fmt(m.xg_per_match,2)}</strong></span><span><small>xGA / match</small><strong>${fmt(m.xg_against_per_match,2)}</strong></span></div><div class="gd-strengths"><div><strong>Strengths to prepare for</strong><ul>${o.strengths.map(item=>`<li>${esc(item)}</li>`).join('')}</ul></div><div><strong>Possible openings</strong><ul>${o.weaknesses.map(item=>`<li>${esc(item)}</li>`).join('')}</ul></div></div></article><article class="gd-card match-importance"><p class="section-kicker">MATCH CONTEXT</p><div class="importance-score"><strong>${plan.importance.score}</strong><span>${esc(plan.importance.label)} importance</span></div><p>#${plan.importance.team_position} ${esc(plan.fixture.team_name)} · ${plan.importance.team_points} pts<br>#${plan.importance.opponent_position} ${esc(plan.fixture.opponent_name)} · ${plan.importance.opponent_points} pts</p><ul>${plan.importance.reasons.map(item=>`<li>${esc(item)}</li>`).join('')}</ul><small>${esc(plan.importance.method)}</small></article></div><article class="gd-card matchup-plan"><div><p class="section-kicker">ANALYST MATCHUP NOTES</p><h3>How the forecast connects to the opponent</h3></div><ol>${plan.matchup_notes.map((item,index)=>`<li><span>0${index+1}</span>${esc(item)}</li>`).join('')}</ol></article>`;}
 
+function oppositionReport(workspace, fixture) {
+  const matches = (workspace.match_profiles || []).filter(match => match.date < fixture.date).slice(-5);
+  if (!matches.length) return '';
+  const phases = matches[0].phases.map(({label}, index) => {
+    const totals = {label};
+    for (const key of Object.keys(matches[0].phases[index]).filter(key => key !== 'label')) {
+      totals[key] = matches.reduce((sum, match) => sum + match.phases[index][key], 0);
+    }
+    return totals;
+  });
+  const sum = key => phases.reduce((total, phase) => total + phase[key], 0);
+  const lanes = ['left', 'centre', 'right'].map(lane => [lane, sum(lane)]);
+  const peak = [...phases].sort((a, b) => b.xg - a.xg)[0];
+  const exposed = [...phases].sort((a, b) => b.xga - a.xga)[0];
+  const players = new Map();
+  for (const match of matches) for (const player of match.players) {
+    if (!players.has(player.id)) players.set(player.id, {name:player.name});
+    const total = players.get(player.id);
+    for (const key of ['minutes','xg','goals','defensive','entries','pressured','failed']) {
+      total[key] = (total[key] || 0) + (player[key] || 0);
+    }
+  }
+  const leaders = (key, eligible, value) => {
+    const ranked = [...players.values()].filter(eligible).sort((a,b) => value(b)-value(a)).slice(0,3);
+    return '<section><h4>'+key+'</h4>'+(ranked.length ? '<ol>'+ranked.map(p =>
+      '<li>'+esc(p.name)+' · '+fmt(value(p),2)+' · '+fmt(p.minutes,0)+' min'+
+      (key === 'Under-pressure pass failure (%)' ? ' · '+p.failed+'/'+p.pressured+' failed' : '')+'</li>'
+    ).join('')+'</ol>' : '<p>Insufficient evidence.</p>')+'</section>';
+  };
+  const timeline = rows => '<div class="gd-phase-table" tabindex="0" aria-label="Match phase statistics"><table><thead><tr>'+[
+    'Phase','Shots','xG','xG against','Final-third entries','Entries conceded','High pressures','Long passes %'
+  ].map(label => '<th scope="col">'+label+'</th>').join('')+'</tr></thead><tbody>'+
+  rows.map(row => '<tr><th scope="row">'+row.label+'</th>'+[
+    row.shots,fmt(row.xg,2),fmt(row.xga,2),row.entries,row.allowed,row.high_pressures,
+    row.passes ? fmt(100*row.direct/row.passes,0) : '—'
+  ].map(value => '<td>'+value+'</td>').join('')+'</tr>').join('')+'</tbody></table></div>';
+  return `<article class="gd-card gd-scouting"><p class="section-kicker">OPPOSITION SCOUTING</p>
+    <h3>${esc(fixture.opponent_name)} · Last ${matches.length} before kickoff</h3>
+    <h4>Planning cues</h4>
+    <ul><li>Attack routes from their perspective: ${lanes.map(([lane,count]) => lane+' '+count+(sum('entries') ? ' ('+fmt(100*count/sum('entries'),0)+'%)' : '')).join(' · ')}</li>
+    <li>${peak.xg ? 'Prepare for their strongest chance-creation phase, '+peak.label+' ('+fmt(peak.xg,2)+' xG).' : 'No recorded chance creation in this sample.'}</li>
+    <li>${exposed.xga ? 'Review pressing and transition opportunities in '+exposed.label+', when they conceded the most chance quality ('+fmt(exposed.xga,2)+' xG).' : 'No recorded xG conceded in this sample.'}</li></ul>
+    <h4>How the match develops</h4>${timeline(phases)}
+    <p>Totals across the sample. Stoppage time belongs to the final phase of each half. Entries are completed passes or carries across the final-third boundary. High pressures start in that third. Long passes travel at least 30 StatsBomb pitch units.</p>
+    <h4>Player threats and vulnerabilities</h4><div class="gd-strengths">
+    ${leaders('Shot threat (xG)',p=>p.minutes>=90&&p.xg>0,p=>p.xg)}
+    ${leaders('Final-third entries',p=>p.minutes>=90&&p.entries>0,p=>p.entries)}
+    ${leaders('Tackles + interceptions',p=>p.minutes>=90&&p.defensive>0,p=>p.defensive)}
+    ${leaders('Under-pressure pass failure (%)',p=>p.minutes>=90&&p.pressured>=10,p=>100*p.failed/p.pressured)}
+    </div><p>Rankings describe specific contributions. Player leaderboards require 90 minutes across the sample. The pressure ranking also requires 10 pressured passes.</p>
+    <h4>Match-by-match evidence</h4>
+    ${[...matches].reverse().map(match=>`<details><summary>${match.date} · vs ${esc(match.opponent)} · ${match.score.join('–')}</summary>${timeline(match.phases)}<p>Entries by lane: ${lanes.map(([lane])=>lane+' '+match.phases.reduce((total,row)=>total+row[lane],0)).join(' · ')}</p></details>`).join('')}
+    </article>`;
+}
+
 function substitutionCards(plan,scenario){
   const rows=plan.substitution_forecast[scenario].filter(row=>!state.gameDayUnavailable.has(row.off_player_id)&&!state.gameDayUnavailable.has(row.on_player_id));
   if(!rows.length)return '<div class="gd-empty-inline">No earlier manager-specific replacement pair remains after the selected availability changes.</div>';
@@ -127,6 +182,7 @@ async function renderSelectedGameDayPlan(preserveAvailability){
   if(!preserveAvailability)state.gameDayUnavailable=new Set(plan.availability.inferred_unavailable_player_ids);
   const lineup=adjustedGameDayLineup(plan),fixture=clubPlan.fixture,scenario=state.gameDaySubScenario||'level';
   $('#game-day-workspace').innerHTML=`<article class="gd-hero"><div><p class="section-kicker">MATCHWEEK ${fixture.match_week} · ${fixture.venue.toUpperCase()} · OPPONENT FORECAST CUTOFF ${plan.training_window.cutoff_date}</p><h2>${crest(fixture.team_name,'club-hero-crest')}${esc(fixture.team_name)} <span>${fixture.venue==='Home'?'vs':'at'}</span> ${crest(fixture.opponent_name,'club-hero-crest')}${esc(fixture.opponent_name)}</h2><p>Preparing ${esc(fixture.team_name)} for ${esc(fixture.opponent_name)} · opponent recent form ${esc(plan.recent_form)} · ${plan.training_window.prior_matches} opponent matches available</p></div><span class="leakage-badge">✓ Opponent data only before kickoff</span></article><section class="gd-validation"><div><p class="section-kicker">OPPONENT MODEL VALIDATION</p><h3>Measured before tactical recommendations</h3><p>${esc(workspace.backtest.method)}</p></div>${backtestCards(workspace.backtest)}</section><div class="gd-primary-grid"><article class="gd-card"><div class="gd-card-heading"><div><p class="section-kicker">OPPONENT FORMATION FORECAST</p><h3>${esc(fixture.opponent_name)} · ${esc(plan.formation_forecast.predicted)} most likely</h3></div><span>Opponent's recent formation use + venue</span></div>${formationProbabilityBars(plan.formation_forecast)}${gameDayPitch(lineup)}</article><article class="gd-card"><div class="gd-card-heading"><div><p class="section-kicker">OPPONENT PREDICTED XI</p><h3>${esc(fixture.opponent_name)} selection evidence</h3></div><span>Start probabilities, not player ratings</span></div>${lineupEvidence(lineup)}</article></div>${availabilityEditor(plan)}${opponentPanel(clubPlan)}<article class="gd-card gd-substitutions"><div class="gd-card-heading"><div><p class="section-kicker">OPPONENT SUBSTITUTION FORECAST</p><h3>${esc(fixture.opponent_name)} likely in-game changes</h3></div><span>Opponent manager-specific prior patterns</span></div><div class="scenario-tabs"><button data-sub-scenario="leading">If opponent leading</button><button data-sub-scenario="level">If level</button><button data-sub-scenario="trailing">If opponent trailing</button></div><div id="gd-substitution-output"></div></article>${contingencyBuilder(plan,lineup)}<details class="methodology-details gd-method"><summary>How the opponent model works and what it cannot know</summary><dl><div><dt>Formation</dt><dd>${esc(workspace.model.formation)}</dd></div><div><dt>Starting XI</dt><dd>${esc(workspace.model.lineup)}</dd></div><div><dt>Substitutions</dt><dd>${esc(workspace.model.substitutions)}</dd></div><div><dt>Scope</dt><dd>${esc(workspace.model.scope)}</dd></div></dl><p>Opponent selected-match validation: ${plan.validation.correct_starters}/11 starters correct · predicted ${esc(plan.formation_forecast.predicted)}, actual ${esc(plan.formation_forecast.actual_for_validation)}.</p></details>`;
+  $('.gd-hero').insertAdjacentHTML('afterend', oppositionReport(workspace, fixture));
   $$('[data-game-day-unavailable]').forEach(input=>input.onchange=event=>{const id=Number(event.target.dataset.gameDayUnavailable);event.target.checked?state.gameDayUnavailable.add(id):state.gameDayUnavailable.delete(id);const scroll=window.scrollY;renderSelectedGameDayPlan(true).then(()=>window.scrollTo(0,scroll));});
   $$('[data-sub-scenario]').forEach(button=>button.onclick=()=>renderSubstitutionScenario(plan,button.dataset.subScenario));
   renderSubstitutionScenario(plan,scenario);

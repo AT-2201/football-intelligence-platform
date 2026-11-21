@@ -223,7 +223,7 @@
       const teamId = gameDay[1];
       if (data.gameDay?.[teamId]) return clone(data.gameDay[teamId]);
       data.gameDay = data.gameDay || {};
-      const response = await fetch(`./assets/game-day/${teamId}.json?v=game-day-lazy-1`);
+      const response = await fetch(`./assets/game-day/${teamId}.json?v=opposition-scouting-1`);
       if (!response.ok) throw new Error(`Unable to load game-day forecasts (${response.status})`);
       data.gameDay[teamId] = await response.json();
       return clone(data.gameDay[teamId]);
