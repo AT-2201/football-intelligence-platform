@@ -99,10 +99,12 @@ function oppositionReport(workspace, fixture) {
   }
   const leaders = (key, eligible, value) => {
     const ranked = [...players.values()].filter(eligible).sort((a,b) => value(b)-value(a)).slice(0,3);
-    return '<section><h4>'+key+'</h4>'+(ranked.length ? '<ol>'+ranked.map(p =>
-      '<li>'+esc(p.name)+' · '+fmt(value(p),2)+' · '+fmt(p.minutes,0)+' min'+
-      (key === 'Under-pressure pass failure (%)' ? ' · '+p.failed+'/'+p.pressured+' failed' : '')+'</li>'
-    ).join('')+'</ol>' : '<p>Insufficient evidence.</p>')+'</section>';
+    const pressure = key === 'Passes lost under pressure';
+    return '<section class="gd-player-watch"><h5>'+key+'</h5>'+(ranked.length ? '<ul>'+ranked.map(p =>
+      '<li><span><strong>'+esc(p.name)+'</strong><small>'+fmt(p.minutes,0)+' min'+
+      (pressure ? ' · '+p.failed+'/'+p.pressured+' failed' : '')+'</small></span>'+
+      '<b>'+fmt(value(p),2)+(pressure ? '%' : '')+'</b></li>'
+    ).join('')+'</ul>' : '<p>Insufficient evidence.</p>')+'</section>';
   };
   const timeline = rows => '<div class="gd-phase-table" tabindex="0" aria-label="Match phase statistics"><table><thead><tr>'+[
     'Phase','Shots','xG','xG against','Final-third entries','Entries conceded','High pressures','Long passes %'
@@ -111,23 +113,40 @@ function oppositionReport(workspace, fixture) {
     row.shots,fmt(row.xg,2),fmt(row.xga,2),row.entries,row.allowed,row.high_pressures,
     row.passes ? fmt(100*row.direct/row.passes,0) : '—'
   ].map(value => '<td>'+value+'</td>').join('')+'</tr>').join('')+'</tbody></table></div>';
-  return `<article class="gd-card gd-scouting"><p class="section-kicker">OPPOSITION SCOUTING</p>
-    <h3>${esc(fixture.opponent_name)} · Last ${matches.length} before kickoff</h3>
-    <h4>Planning cues</h4>
-    <ul><li>Attack routes from their perspective: ${lanes.map(([lane,count]) => lane+' '+count+(sum('entries') ? ' ('+fmt(100*count/sum('entries'),0)+'%)' : '')).join(' · ')}</li>
-    <li>${peak.xg ? 'Prepare for their strongest chance-creation phase, '+peak.label+' ('+fmt(peak.xg,2)+' xG).' : 'No recorded chance creation in this sample.'}</li>
-    <li>${exposed.xga ? 'Review pressing and transition opportunities in '+exposed.label+', when they conceded the most chance quality ('+fmt(exposed.xga,2)+' xG).' : 'No recorded xG conceded in this sample.'}</li></ul>
-    <h4>How the match develops</h4>${timeline(phases)}
-    <p>Totals across the sample. Stoppage time belongs to the final phase of each half. Entries are completed passes or carries across the final-third boundary. High pressures start in that third. Long passes travel at least 30 StatsBomb pitch units.</p>
-    <h4>Player threats and vulnerabilities</h4><div class="gd-strengths">
+  const entries = sum('entries');
+  const strongestLane = Math.max(...lanes.map(([, count]) => count));
+  return `<article class="gd-card gd-scouting">
+    <header class="gd-scout-header"><div><p class="section-kicker">OPPOSITION SCOUTING</p>
+    <h3>${esc(fixture.opponent_name)}</h3></div>
+    <span>Last ${matches.length} matches before kickoff</span></header>
+    <div class="gd-scout-overview">
+      <section class="gd-scout-lanes"><h4>Where they attack</h4>
+        <p>Final-third entries from their perspective</p>
+        ${lanes.map(([lane,count]) => {
+          const share = entries ? 100*count/entries : 0;
+          return `<div class="gd-scout-lane ${count && count === strongestLane ? 'is-busiest' : ''}">
+            <span>${lane}</span><div aria-hidden="true"><i style="width:${share}%"></i></div>
+            <strong>${entries ? fmt(share,0)+'%' : '—'}</strong><small>${count} entries</small></div>`;
+        }).join('')}
+      </section>
+      <section class="gd-scout-phase"><h4>When they create most</h4>
+        <strong>${peak.xg ? peak.label : '—'}</strong>
+        <p>${peak.xg ? fmt(peak.xg,2)+' xG created' : 'No recorded xG created'}</p></section>
+      <section class="gd-scout-phase vulnerable"><h4>When they concede most</h4>
+        <strong>${exposed.xga ? exposed.label : '—'}</strong>
+        <p>${exposed.xga ? fmt(exposed.xga,2)+' xG conceded' : 'No recorded xG conceded'}</p></section>
+    </div>
+    <h4>Players to watch</h4><div class="gd-scout-players">
     ${leaders('Shot threat (xG)',p=>p.minutes>=90&&p.xg>0,p=>p.xg)}
     ${leaders('Final-third entries',p=>p.minutes>=90&&p.entries>0,p=>p.entries)}
     ${leaders('Tackles + interceptions',p=>p.minutes>=90&&p.defensive>0,p=>p.defensive)}
-    ${leaders('Under-pressure pass failure (%)',p=>p.minutes>=90&&p.pressured>=10,p=>100*p.failed/p.pressured)}
-    </div><p>Rankings describe specific contributions. Player leaderboards require 90 minutes across the sample. The pressure ranking also requires 10 pressured passes.</p>
-    <h4>Match-by-match evidence</h4>
+    ${leaders('Passes lost under pressure',p=>p.minutes>=90&&p.pressured>=10,p=>100*p.failed/p.pressured)}
+    </div><p class="gd-scout-note">Minimum 90 minutes across the sample. The pressure ranking also requires 10 pressured passes.</p>
+    <details class="gd-scout-detail"><summary>Phase-by-phase breakdown</summary>${timeline(phases)}
+    <p>Stoppage time stays with its half. Final-third entries count completed passes and carries across the boundary. High pressures start in the final third. Long passes travel at least 30 StatsBomb pitch units.</p></details>
+    <details class="gd-scout-detail"><summary>Match-by-match evidence</summary>
     ${[...matches].reverse().map(match=>`<details><summary>${match.date} · vs ${esc(match.opponent)} · ${match.score.join('–')}</summary>${timeline(match.phases)}<p>Entries by lane: ${lanes.map(([lane])=>lane+' '+match.phases.reduce((total,row)=>total+row[lane],0)).join(' · ')}</p></details>`).join('')}
-    </article>`;
+    </details></article>`;
 }
 
 function substitutionCards(plan,scenario){
