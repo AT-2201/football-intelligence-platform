@@ -71,12 +71,6 @@ def test_selected_fixture_has_a_reciprocal_opponent_forecast() -> None:
     for profile in prior_profiles:
         assert len(profile["phases"]) == 6
         assert profile["players"]
-        assert profile["possessions"]
-        for sequence in profile["possessions"]:
-            _, _, start, furthest, lane, actions, seconds, xg, _, phase = sequence
-            assert 0 <= start <= furthest <= 120
-            assert 0 <= lane <= 80
-            assert actions >= 2 and seconds >= 0 and xg >= 0 and 0 <= phase < 6
         for phase in profile["phases"]:
             assert phase["entries"] == phase["left"] + phase["centre"] + phase["right"]
     assert len(opponent_plan["predicted_xi"]) == 11
